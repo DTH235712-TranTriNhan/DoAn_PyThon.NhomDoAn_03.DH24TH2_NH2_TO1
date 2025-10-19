@@ -16,7 +16,6 @@ A. Tạo Database và Chọn Ngữ cảnh
 -- Tên Database (Dùng CamelCase: salesProjectDB)
 CREATE DATABASE salesProjectDB;
 GO 
--- Chọn Database để tạo bảng
 USE salesProjectDB;
 GO
 ```
@@ -26,12 +25,12 @@ B. Tạo Bảng Cấu trúc (4 Bảng)
 ```sql
 -- Sử dụng IDENTITY cho ID tự động tăng và NVARCHAR cho tiếng Việt có dấu.
 CREATE TABLE Users (
-    userID INT IDENTITY(1,1) PRIMARY KEY,
+    userID VARCHAR(50) PRIMARY KEY,
     userName VARCHAR(50) UNIQUE NOT NULL, 
     password VARCHAR(255) NOT NULL,
-    fullName NVARCHAR(100), -- Hỗ trợ tiếng Việt có dấu
+    fullName NVARCHAR(100), 
     phone VARCHAR(20),
-    address NVARCHAR(255),  -- Hỗ trợ tiếng Việt có dấu
+    address NVARCHAR(255), 
     userRole VARCHAR(10) NOT NULL,
     
     CONSTRAINT CHK_UserRole CHECK (userRole IN ('admin', 'user', 'guest'))
@@ -40,10 +39,10 @@ CREATE TABLE Users (
 2. Bảng Products (Hàng hóa & Tồn kho)
 ```sql
 CREATE TABLE Products (
-    productID INT IDENTITY(1,1) PRIMARY KEY,
-    name NVARCHAR(255) NOT NULL, -- Tên sản phẩm có dấu
-    category NVARCHAR(100), -- Danh mục có dấu
-    price DECIMAL(10, 2) NOT NULL,
+    SKU VARCHAR(50) PRIMARY KEY,
+    name NVARCHAR(100) NOT NULL UNIQUE, 
+    category NVARCHAR(100), 
+    price DECIMAL(18, 2) NOT NULL,
     stockQuantity INT NOT NULL DEFAULT 0
 );
 ```
@@ -51,35 +50,36 @@ CREATE TABLE Products (
 ```sql
 CREATE TABLE Orders (
     orderID INT IDENTITY(1,1) PRIMARY KEY,
-    userID INT, 
+    userID VARCHAR(50),                     -- Khóa ngoại phải khớp với Users.userID (VARCHAR)
     orderDate DATETIME NOT NULL DEFAULT GETDATE(),
-    totalAmount DECIMAL(10, 2) NOT NULL,
+    totalAmount DECIMAL(18, 2) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'Completed',
-    FOREIGN KEY (userID) REFERENCES Users(userID)
+    FOREIGN KEY (userID) REFERENCES Users(userID) -- Khóa ngoại trỏ đến Users.userID mới
 );
 ```
 4. Bảng OrderItems (Chi tiết Đơn hàng)
 ```sql
 CREATE TABLE OrderItems (
     itemID INT IDENTITY(1,1) PRIMARY KEY,
-    orderID INT NOT NULL,
-    productID INT NOT NULL,
+    orderID INT NOT NULL,   
+    SKU VARCHAR(50) NOT NULL,      -- Tự nhập (Mã sản phẩm)
     quantity INT NOT NULL,
-    unitPrice DECIMAL(10, 2) NOT NULL,
+    unitPrice DECIMAL(18, 2) NOT NULL,
     FOREIGN KEY (orderID) REFERENCES Orders(orderID),
-    FOREIGN KEY (productID) REFERENCES Products(productID)
+    FOREIGN KEY (SKU) REFERENCES Products(SKU)
 );
 ```
 C. Dữ liệu Khởi tạo (Mặc định)
 ```sql
 -- Chèn tài khoản Admin và Guest để kiểm tra đăng nhập.
-INSERT INTO Users (userName, password, fullName, userRole) VALUES
-('admin', 'admin123', N'Quản trị viên Hệ thống', 'admin'),
-('guest', '123', N'Khách Vãng Lai', 'guest');
+-- Chèn tài khoản Admin và Guest.
+INSERT INTO Users (userID, userName, password, fullName, userRole) VALUES
+('AD001', 'admin', 'admin123', N'Quản trị viên Hệ thống', 'admin'),
+('GT001', 'guest', '123', N'Khách Vãng Lai', 'guest');
 ```
 3. Cấu Hình Kết Nối Python
 ```sql
--- Sau khi tạo Database, bạn phải kiểm tra và sửa đổi tên Server trong file databaseManager.py:
+-- Sau khi tạo Database, bạn phải kiểm tra và sửa đổi tên Server trong file Database/dbConnector.py:
 # Mở file databaseManager.py và sửa dòng này:
 # Lưu ý: Phải thêm chữ 'r' để tránh lỗi cú pháp \ trong Python
 SERVER_NAME = r'TEN_SERVER_CUA_BAN\SQLEXPRESS'
@@ -88,7 +88,7 @@ SERVER_NAME = r'TEN_SERVER_CUA_BAN\SQLEXPRESS'
 
 Trường hợp 2: SQL Server Authentication (Cần Tên/Mật khẩu SQL)
 ```sql
--- Cách Sửa trong databaseManager.py (Dành cho người dùng khác):
+-- Cách Sửa trong Database/dbConnector.py (Dành cho người dùng khác):
 def checkLogin(username, password):
     # !!! NGƯỜI DÙNG CẦN SỬA DÒNG NÀY !!!
     # Thay getDbConnection() bằng cách truyền user và password CSDL của họ
