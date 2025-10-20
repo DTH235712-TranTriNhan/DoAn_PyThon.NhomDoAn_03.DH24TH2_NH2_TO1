@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
-from Database.dbUsers import registerUser, checkUserIDExists, checkUserNameExists # Cần thêm 2 hàm check mới
+# Chỉ cần registerUser và checkUserNameExists
+from Database.dbUsers import registerUser, checkUserNameExists 
 import uuid
 
 class RegisterPage(tk.Frame):
@@ -15,24 +16,22 @@ class RegisterPage(tk.Frame):
         fields_frame.pack(pady=10)
 
         self.fields = {}
-        labels = ["Mã Nhân viên", "Tên đăng nhập", "Mật khẩu", "Họ và tên", "Điện thoại", "Địa chỉ"]
-        keys = ["user_id", "username", "password", "fullname", "phone", "address"]
+        # Đã loại bỏ "Mã Nhân viên" khỏi labels
+        labels = ["Tên đăng nhập", "Mật khẩu", "Họ và tên", "Điện thoại", "Địa chỉ"]
+        # Đã loại bỏ "user_id" khỏi keys
+        keys = ["username", "password", "fullname", "phone", "address"]
 
         for i, (label_text, key) in enumerate(zip(labels, keys)):
             tk.Label(fields_frame, text=f"{label_text}:", font=("Arial", 10)).grid(row=i, column=0, sticky="w", padx=10, pady=5)
             
-            # Ẩn mật khẩu
+            # Xóa logic cho user_id đã ẩn
             if key == "password":
                 entry = tk.Entry(fields_frame, width=30, show="*")
-            # Gợi ý tạo mã tự động cho user_id
-            elif key == "user_id":
-                entry = tk.Entry(fields_frame, width=30)
-                entry.insert(0, str(uuid.uuid4())[:8].upper())
             else:
                 entry = tk.Entry(fields_frame, width=30)
                 
-            # GẮN SỰ KIỆN: Kiểm tra duy nhất theo thời gian thực
-            if key in ["user_id", "username"]:
+            # GẮN SỰ KIỆN: Kiểm tra duy nhất theo thời gian thực (chỉ cho username)
+            if key == "username":
                 entry.bind("<KeyRelease>", self.check_unique_input)
                 
             entry.grid(row=i, column=1, padx=10, pady=5)
@@ -44,9 +43,9 @@ class RegisterPage(tk.Frame):
         # Nút Quay lại
         tk.Button(self, text="Quay lại Đăng nhập", command=lambda: controller.show_frame("LoginPage")).pack()
 
-    # --- HÀM KIỂM TRA DUY NHẤT REAL-TIME ---
+    # --- HÀM KIỂM TRA DUY NHẤT REAL-TIME (CHỈ CHO USERNAME) ---
     def check_unique_input(self, event):
-        """Kiểm tra tính duy nhất của Mã Nhân viên và Tên đăng nhập ngay khi gõ."""
+        """Kiểm tra tính duy nhất của Tên đăng nhập ngay khi gõ."""
         widget = event.widget
         input_value = widget.get()
         
@@ -56,22 +55,13 @@ class RegisterPage(tk.Frame):
             return
 
         is_duplicate = False
-        message = ""
         
-        if widget == self.fields['user_id']:
-            if checkUserIDExists(input_value):
-                is_duplicate = True
-                message = "Mã Nhân viên này đã tồn tại!"
+        # CHỈ CẦN KIỂM TRA USERNAME
+        if checkUserNameExists(input_value):
+            is_duplicate = True
         
-        elif widget == self.fields['username']:
-            if checkUserNameExists(input_value):
-                is_duplicate = True
-                message = "Tên đăng nhập này đã tồn tại!"
-                
         if is_duplicate:
             widget.config(bg='lightcoral') 
-            # Không cần messagebox.showwarning liên tục, chỉ cần đổi màu
-            # messagebox.showwarning("Cảnh báo Trùng lặp", message) 
         else:
             widget.config(bg='white')
 
@@ -84,15 +74,14 @@ class RegisterPage(tk.Frame):
             messagebox.showerror("Lỗi", "Vui lòng điền đầy đủ tất cả các trường.")
             return
 
-        # KIỂM TRA CUỐI CÙNG TRƯỚC KHI GỌI CSDL (Dựa vào màu nền để kiểm tra trực quan)
-        if self.fields['user_id'].cget('bg') == 'lightcoral' or \
-           self.fields['username'].cget('bg') == 'lightcoral':
-            messagebox.showerror("Lỗi", "Mã Nhân viên hoặc Tên đăng nhập bị trùng. Vui lòng sửa lại.")
-            return
+        # KIỂM TRA CUỐI CÙNG TRƯỚC KHI GỌI CSDL (Chỉ kiểm tra username)
+        if self.fields['username'].cget('bg') == 'lightcoral':
+           messagebox.showerror("Lỗi", "Tên đăng nhập đã bị trùng. Vui lòng sửa lại.")
+           return
 
-        # SỬA: PHẢI NHẬN CẢ 'success' VÀ 'message'
+        # Gọi hàm registerUser và truyền None cho user_id (để hàm CSDL tự tạo)
         success, message = registerUser(
-            data['user_id'], 
+            None, # <--- TRUYỀN NONE: BÁO CHO HÀM CSDL TỰ TẠO USER_ID
             data['username'], 
             data['password'], 
             data['fullname'], 
@@ -104,5 +93,5 @@ class RegisterPage(tk.Frame):
             messagebox.showinfo("Thành công", message) 
             self.controller.show_frame("LoginPage")
         else:
-            # HIỂN THỊ THÔNG BÁO LỖI CỤ THỂ TỪ HÀM CSDL (Nếu có lỗi khác)
+            # HIỂN THỊ THÔNG BÁO LỖI CỤ THỂ
             messagebox.showerror("Lỗi", message)

@@ -28,20 +28,30 @@ def registerUser(user_id, username, password, fullname, phone, address):
     if conn:
         cursor = conn.cursor()
         try:
-            # *** PHẦN NÀY ĐÃ ĐƯỢC DỌN DẸP ***
-            # Loại bỏ SELECT kiểm tra trùng lặp vì đã kiểm tra ở giao diện
+            # 1. TẠO VÀ KIỂM TRA USER ID TỰ ĐỘNG
+            if user_id is None:
+                new_user_id = str(uuid.uuid4())[:8].upper()
+                
+                # Lặp cho đến khi tạo được một ID duy nhất
+                while checkUserIDExists(new_user_id):
+                    new_user_id = str(uuid.uuid4())[:8].upper()
+                
+                user_id = new_user_id
             
+            # 2. BỎ QUA KIỂM TRA USERNAME Ở ĐÂY VÌ ĐÃ CÓ REAL-TIME CHECK Ở GIAO DIỆN.
+            #   Nếu có lỗi trùng lặp (hiếm) sẽ được bắt ở except IntegrityError.
+            
+            # 3. THỰC HIỆN CHÈN (Sử dụng user_id đã tạo hoặc user_id được truyền vào)
             sql = """
                 INSERT INTO Users (userID, userName, password, fullName, phone, address, userRole)
                 VALUES (?, ?, ?, ?, ?, ?, 'user')
             """
             cursor.execute(sql, user_id, username, password, fullname, phone, address)
             conn.commit()
-            return True, "Đăng ký tài khoản thành công! Vui lòng đăng nhập."
+            return True, f"Đăng ký thành công! Mã nhân viên của bạn là: {user_id}" 
 
         except pyodbc.IntegrityError as e:
-            # Bắt lỗi cuối cùng: Nếu có lỗi trùng lặp xảy ra giữa lúc gõ phím và lúc nhấn nút
-            # (Rất hiếm, nhưng đảm bảo an toàn CSDL)
+            # Bắt lỗi trùng lặp Tên đăng nhập (hoặc Mã nhân viên nếu giao diện bị lỗi)
             error_msg = str(e)
             if 'PRIMARY KEY' in error_msg or 'userID' in error_msg:
                 return False, "Lỗi: Mã Nhân viên đã bị tài khoản khác sử dụng ngay lập tức."
