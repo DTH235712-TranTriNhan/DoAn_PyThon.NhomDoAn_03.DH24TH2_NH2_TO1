@@ -20,7 +20,7 @@ class AdminPage(tk.Frame):
         input_frame.pack(fill='x', padx=10)
 
         # Các trường nhập liệu (THAY ĐỔI: ID -> SKU)
-        labels = ["Mã SP (SKU)", "Tên SP", "Danh mục", "Giá", "Tồn kho"]
+        labels = ["Mã Sản Phẩm", "Tên Sản Phẩm", "Danh mục", "Giá", "Tồn kho"]
         keys = ["sku", "name", "category", "price", "stock"]
         self.entries = {}
         
@@ -40,8 +40,6 @@ class AdminPage(tk.Frame):
             entry.grid(row=1, column=i, padx=5, pady=5)
             self.entries[key] = entry
             
-        # KHÔNG VÔ HIỆU HÓA TRƯỜNG SKU (Trường SKU là tự nhập)
-
         # Các nút chức năng
         button_frame = tk.Frame(input_frame)
         button_frame.grid(row=2, column=0, columnspan=5, pady=10)
@@ -54,7 +52,7 @@ class AdminPage(tk.Frame):
         # --- PHẦN DƯỚI: DANH SÁCH SẢN PHẨM (Treeview) ---
         
         # Tạo Treeview (THAY ĐỔI: ID -> Mã SP)
-        columns = ("Mã SP", "Tên SP", "Danh mục", "Giá", "Tồn kho")
+        columns = ("Mã Sản Phẩm", "Tên Sản Phẩm", "Danh mục", "Giá", "Tồn kho")
         self.tree = ttk.Treeview(self, columns=columns, show="headings")
         
         for col in columns:
@@ -104,7 +102,7 @@ class AdminPage(tk.Frame):
         
         # Kiểm tra SKU và Tên SP không rỗng (bắt buộc phải có cho mọi hành động)
         if not data['sku'] or not data['name']:
-             messagebox.showerror("Lỗi Dữ liệu", "Mã SP (SKU) và Tên SP không được để trống.")
+             messagebox.showerror("Lỗi Dữ liệu", "Mã SP và Tên SP không được để trống.")
              return None
              
         try:

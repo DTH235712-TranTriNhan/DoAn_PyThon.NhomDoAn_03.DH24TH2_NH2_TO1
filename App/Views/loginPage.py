@@ -28,8 +28,6 @@ class LoginPage(tk.Frame):
         role = checkLogin(username, password)
         
         if role:
-            messagebox.showinfo("Thành công", f"Đăng nhập thành công!")
-            
             if role == 'admin':
                 self.controller.show_frame("AdminPage")
             else:
