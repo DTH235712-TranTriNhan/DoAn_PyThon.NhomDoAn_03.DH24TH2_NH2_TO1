@@ -6,6 +6,9 @@ File này hướng dẫn cách tạo database và các bảng cần thiết đ�
 SQL Server: Đã cài đặt SQL Server và SQL Server Management Studio (SSMS).
 
 Tên Server: Đảm bảo bạn biết tên Server của mình (ví dụ: LAPTOP-L0M5...\SQLEXPRESS).
+
+chạy lệnh này để kết nối Vscode với sql service
+pip install pyodbc
 ```
 2. Các Bước Tạo Database
 ```

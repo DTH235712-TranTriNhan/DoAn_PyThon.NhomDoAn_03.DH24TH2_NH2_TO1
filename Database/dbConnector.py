@@ -1,7 +1,7 @@
 import pyodbc
 
 # Cấu hình kết nối CSDL
-SERVER_NAME = r'LAPTOP-LOMSLJ90\SQLEXPRESS'
+SERVER_NAME = r'...'
 DATABASE_NAME = 'salesProjectDB'
 DRIVER = '{ODBC Driver 17 for SQL Server}'
 
