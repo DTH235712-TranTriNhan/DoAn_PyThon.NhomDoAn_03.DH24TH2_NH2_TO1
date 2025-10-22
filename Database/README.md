@@ -36,7 +36,7 @@ CREATE TABLE Users (
     address NVARCHAR(255), 
     userRole VARCHAR(10) NOT NULL,
     
-    CONSTRAINT CHK_UserRole CHECK (userRole IN ('admin', 'user', 'guest'))
+    CONSTRAINT CHK_UserRole CHECK (userRole IN ('Admin', 'User', 'Guest'))
 );
 ```
 2. Bảng Products (Hàng hóa & Tồn kho)
@@ -45,8 +45,10 @@ CREATE TABLE Products (
     SKU VARCHAR(50) PRIMARY KEY,
     name NVARCHAR(100) NOT NULL UNIQUE, 
     category NVARCHAR(100), 
-    price DECIMAL(18, 2) NOT NULL,
-    stockQuantity INT NOT NULL DEFAULT 0
+    price DECIMAL(18, 0) NOT NULL,
+    stockQuantity INT NOT NULL DEFAULT 0,
+    ImagePath NVARCHAR(MAX),
+    Description NVARCHAR(MAX)
 );
 ```
 3. Bảng Orders (Đơn hàng/Hóa đơn)
@@ -55,7 +57,7 @@ CREATE TABLE Orders (
     orderID INT IDENTITY(1,1) PRIMARY KEY,
     userID VARCHAR(50),                     -- Khóa ngoại phải khớp với Users.userID (VARCHAR)
     orderDate DATETIME NOT NULL DEFAULT GETDATE(),
-    totalAmount DECIMAL(18, 2) NOT NULL,
+    totalAmount DECIMAL(18, 0) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'Completed',
     FOREIGN KEY (userID) REFERENCES Users(userID) -- Khóa ngoại trỏ đến Users.userID mới
 );
@@ -67,7 +69,7 @@ CREATE TABLE OrderItems (
     orderID INT NOT NULL,   
     SKU VARCHAR(50) NOT NULL,      -- Tự nhập (Mã sản phẩm)
     quantity INT NOT NULL,
-    unitPrice DECIMAL(18, 2) NOT NULL,
+    unitPrice DECIMAL(18, 0) NOT NULL,
     FOREIGN KEY (orderID) REFERENCES Orders(orderID),
     FOREIGN KEY (SKU) REFERENCES Products(SKU)
 );
@@ -77,8 +79,8 @@ C. Dữ liệu Khởi tạo (Mặc định)
 -- Chèn tài khoản Admin và Guest để kiểm tra đăng nhập.
 -- Chèn tài khoản Admin và Guest.
 INSERT INTO Users (userID, userName, password, fullName, userRole) VALUES
-('AD001', 'admin', 'admin123', N'Quản trị viên Hệ thống', 'admin'),
-('GT001', 'guest', '123', N'Khách Vãng Lai', 'guest');
+('AD001', 'admin', '123', N'Quản trị viên Hệ thống', 'Admin'),
+('GT001', 'guest', '123', N'Khách Vãng Lai', 'Guest');
 ```
 3. Cấu Hình Kết Nối Python
 ```sql
