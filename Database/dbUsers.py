@@ -48,7 +48,7 @@ def registerUser(user_id, username, password, fullname, phone, address):
             """
             cursor.execute(sql, user_id, username, password, fullname, phone, address)
             conn.commit()
-            return True, f"Đăng ký thành công! Mã nhân viên của bạn là: {user_id}" 
+            return True, f"Đăng ký thành công!"
 
         except pyodbc.IntegrityError as e:
             # Bắt lỗi trùng lặp Tên đăng nhập (hoặc Mã nhân viên nếu giao diện bị lỗi)
@@ -56,7 +56,7 @@ def registerUser(user_id, username, password, fullname, phone, address):
             if 'PRIMARY KEY' in error_msg or 'userID' in error_msg:
                 return False, "Lỗi: Mã Nhân viên đã bị tài khoản khác sử dụng ngay lập tức."
             elif 'UNIQUE' in error_msg or 'userName' in error_msg:
-                return False, "Lỗi: Tên đăng nhập đã bị tài khoản khác sử dụng ngay lập tức."
+                return False, "Lỗi: Tên đăng nhập đã tồn tài vui lòng sử dụng tên đăng nhập khác."
             return False, f"Lỗi ràng buộc CSDL: {e}"
             
         except Exception as e:

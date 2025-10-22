@@ -1,4 +1,3 @@
-# File: Database/db_products.py
 from .dbConnector import getDbConnection
 
 def getAllProducts():
