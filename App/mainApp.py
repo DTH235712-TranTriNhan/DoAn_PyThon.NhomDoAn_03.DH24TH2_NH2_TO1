@@ -25,7 +25,7 @@ class SalesApp(tk.Tk):
             self.frames[page_name] = frame
             frame.grid(row=0, column=0, sticky="nsew")
 
-        self.show_frame("LoginPage") # Khởi đầu bằng trang Đăng nhập
+        self.show_frame("POSPage") # Khởi đầu bằng trang Đăng nhập
 
     def show_frame(self, page_name):
         '''Hiển thị frame được chỉ định'''

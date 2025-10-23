@@ -134,6 +134,13 @@ class LoginPage(tk.Frame):
         role = checkLogin(username, password)
         
         if role:
+            pos_page_instance = self.controller.frames["POSPage"]
+            pos_page_instance.update_user_status(username, role)
+
+            # Xóa trường nhập liệu sau khi thành công
+            username_entry_widget.delete(0, tk.END)
+            password_entry_widget.delete(0, tk.END)
+
             # Đăng nhập thành công
             if role.lower() == 'admin':
                 # Chuyển đến trang Quản trị              
