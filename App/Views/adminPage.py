@@ -14,7 +14,7 @@ class AdminPage(tk.Frame):
         header_frame = tk.Frame(self)
         header_frame.pack(fill='x', pady=10)
         
-        tk.Label(header_frame, text="QUẢN LÝ SẢN PHẨM", font=("Arial", 20, "bold")).pack(side=tk.LEFT, padx=10)
+        tk.Label(header_frame, text="QUẢN LÝ SẢN PHẨM", font=("Times New Roman", 20, "bold")).pack(side=tk.LEFT, padx=10)
         tk.Button(header_frame, text="Đăng xuất", command=lambda: controller.show_frame("LoginPage")).pack(side=tk.RIGHT, padx=10)
 
         # --- PHẦN GIỮA: FORM NHẬP LIỆU (CRUD) ---

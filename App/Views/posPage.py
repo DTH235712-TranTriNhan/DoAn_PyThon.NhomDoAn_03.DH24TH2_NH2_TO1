@@ -23,7 +23,7 @@ class POSPage(tk.Frame):
         self.login_button.pack(side=tk.RIGHT, padx=10)
         
         # --- TIÊU ĐỀ ---
-        tk.Label(self, text="TRANG BÁN HÀNG (POS)", font=("Arial", 20, "bold")).pack(pady=10)
+        tk.Label(self, text="TRANG BÁN HÀNG ", font=("Times New Roman", 20, "bold"),fg="red").pack(pady=10)
         
         # --- Khung Chính: Chia thành 2 cột ---
         main_paned_window = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -60,17 +60,17 @@ class POSPage(tk.Frame):
         self.photo = None # Biến để giữ tham chiếu ảnh PIL
         
         # Tên Sản phẩm
-        tk.Label(self.detail_frame, text="Tên SP:", font=("Arial", 10, "bold")).pack(anchor='w')
-        self.name_label = tk.Label(self.detail_frame, text="...", anchor='w', font=("Arial", 14))
+        tk.Label(self.detail_frame, text="Tên SP:", font=("Times New Roman", 10, "bold")).pack(anchor='w')
+        self.name_label = tk.Label(self.detail_frame, text="...", anchor='w', font=("Times New Roman", 14))
         self.name_label.pack(fill='x')
         
         # Giá
-        tk.Label(self.detail_frame, text="Giá Bán:", font=("Arial", 10, "bold")).pack(anchor='w', pady=(5, 0))
-        self.price_label = tk.Label(self.detail_frame, text="...", fg="red", font=("Arial", 18, "bold"), anchor='w')
+        tk.Label(self.detail_frame, text="Giá Bán:", font=("Times New Roman", 10, "bold")).pack(anchor='w', pady=(5, 0))
+        self.price_label = tk.Label(self.detail_frame, text="...", fg="red", font=("Times New Roman", 18, "bold"), anchor='w')
         self.price_label.pack(fill='x')
 
         # Mô tả
-        tk.Label(self.detail_frame, text="Mô tả:", font=("Arial", 10, "bold")).pack(anchor='w', pady=(5, 0))
+        tk.Label(self.detail_frame, text="Mô tả:", font=("Times New Roman", 10, "bold")).pack(anchor='w', pady=(5, 0))
         # Sử dụng Text Widget cho mô tả dài, có thanh cuộn (Scrollbar)
         scrollbar = ttk.Scrollbar(self.detail_frame)
         self.description_text = tk.Text(self.detail_frame, height=5, wrap='word', yscrollcommand=scrollbar.set) 
