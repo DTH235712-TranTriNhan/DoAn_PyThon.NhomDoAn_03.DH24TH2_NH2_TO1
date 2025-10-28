@@ -1,13 +1,17 @@
 import pyodbc
 
-# Cấu hình kết nối CSDL
+# ----------------------------------------------------------------------
+# --- CẤU HÌNH KẾT NỐI CSDL ---
+# ----------------------------------------------------------------------
 SERVER_NAME = r'LAPTOP-LOMSLJ90\SQLEXPRESS'
 DATABASE_NAME = 'salesProjectDB'
 DRIVER = '{ODBC Driver 17 for SQL Server}'
+# ----------------------------------------------------------------------
 
 def getDbConnection(user=None, password=None):
     """
     Tạo và trả về đối tượng kết nối CSDL SQL Server.
+    Mặc định sử dụng Windows Authentication nếu không có user/password.
     """
     try:
         if user and password:
@@ -28,7 +32,11 @@ def getDbConnection(user=None, password=None):
                 'Trusted_Connection=yes;'
             )
         
+        # Thiết lập kết nối
         conn = pyodbc.connect(conn_string)
+        # Thiết lập autocommit mặc định là True cho các thao tác đơn giản
+        conn.autocommit = True 
+        
         return conn
         
     except Exception as e:

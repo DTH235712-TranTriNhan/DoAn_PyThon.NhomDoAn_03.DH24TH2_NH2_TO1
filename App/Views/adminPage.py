@@ -10,6 +10,11 @@ class AdminPage(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.controller = controller
 
+        # --- BIẾN ĐỂ GIỮ THAM CHIẾU ẢNH ---
+        self.photo_admin = None # Biến giữ tham chiếu ảnh PIL/ImageTk
+        self.categories = ["Điện tử", "Phụ kiện", "Đồ gia dụng", "Thời trang", "Khác"]
+        self.entries = {}
+        
         # --- PHẦN TRÊN: TIÊU ĐỀ VÀ NÚT ĐĂNG XUẤT ---
         header_frame = tk.Frame(self)
         header_frame.pack(fill='x', pady=10)
@@ -23,13 +28,11 @@ class AdminPage(tk.Frame):
 
         labels = ["Mã SP", "Tên SP", "Danh mục", "Giá", "Tồn kho", "Đường dẫn Ảnh", "Mô tả"]
         keys = ["sku", "name", "category", "price", "stock", "imagePath", "description"]
-        self.entries = {}
-        self.categories = ["Điện tử", "Phụ kiện", "Đồ gia dụng", "Thời trang", "Khác"]
         
         # Thiết lập cột mở rộng cho input_frame
         input_frame.grid_columnconfigure(1, weight=1) 
         input_frame.grid_columnconfigure(3, weight=1)
-        input_frame.grid_columnconfigure(5, weight=0)
+        # Cột ảnh (cột 5) không cần mở rộng
         
         # ---------------- HÀNG 0 VÀ HÀNG 1 (5 TRƯỜNG CƠ BẢN) ----------------
         base_fields = ["sku", "name", "category", "price", "stock"]
@@ -57,19 +60,17 @@ class AdminPage(tk.Frame):
         
         tk.Label(input_frame, text=label_text + ":", anchor='w').grid(row=2, column=0, padx=5, pady=5, sticky='w')
         entry = tk.Entry(input_frame, width=60) 
-        entry.grid(row=2, column=1, padx=5, pady=5, columnspan=3, sticky='ew') # Kéo dài qua 3 cột
+        entry.grid(row=2, column=1, padx=5, pady=5, columnspan=3, sticky='ew')
         self.entries[key] = entry
         
         # Nút Chọn ảnh (Đặt ở cột 4)
         tk.Button(input_frame, text="Chọn ảnh...", command=self.browseImage, width=10).grid(row=2, column=4, padx=5, pady=5, sticky='w')
         
-        # --- THÊM: Khung Ảnh Xem Trước (Cột 5, Hàng 2-3) ---
+        # --- KHUNG ẢNH XEM TRƯỚC (Cột 5, Hàng 2-3) ---
         self.image_preview_label = tk.Label(input_frame, text="Ảnh Xem trước", 
-                                            width=20, height=10, relief="sunken", 
-                                            bg="lightgray")
-        # Đặt ở cột 5 và kéo dài qua 2 hàng (2 và 3)
+                                             width=20, height=10, relief="sunken", 
+                                             bg="lightgray")
         self.image_preview_label.grid(row=2, column=5, rowspan=2, padx=10, pady=5, sticky='nsew')
-        self.photo_admin = None # Biến giữ tham chiếu ảnh PIL
 
         # ---------------- HÀNG 3 (Mô tả) ----------------
         key = "description"
@@ -77,14 +78,11 @@ class AdminPage(tk.Frame):
         
         tk.Label(input_frame, text=label_text + ":", anchor='w').grid(row=3, column=0, padx=5, pady=5, sticky='w')
         entry = tk.Entry(input_frame, width=80) 
-        entry.grid(row=3, column=1, padx=5, pady=5, columnspan=4, sticky='ew') # Kéo dài qua 4 cột
+        entry.grid(row=3, column=1, padx=5, pady=5, columnspan=4, sticky='ew')
         self.entries[key] = entry
         
-        # Cột cuối cùng (5) không cần weight vì đã dùng columnspan
-
         # ---------------- HÀNG 4 (Các nút chức năng CRUD) ----------------
         button_frame = tk.Frame(input_frame)
-        # Chiếm hết chiều rộng (từ cột 0 đến 4)
         button_frame.grid(row=4, column=0, columnspan=5, pady=10) 
         
         tk.Button(button_frame, text="Thêm", command=self.add_product_action, width=10).pack(side=tk.LEFT, padx=10)
@@ -93,7 +91,7 @@ class AdminPage(tk.Frame):
         tk.Button(button_frame, text="Làm mới", command=self.load_products, width=10).pack(side=tk.LEFT, padx=10)
         
         
-        # --- KHUNG TÌM KIẾM (MỚI) ---
+        # --- KHUNG TÌM KIẾM ---
         search_frame = tk.Frame(self, padx=10, pady=5)
         search_frame.pack(fill='x')
         
@@ -103,7 +101,6 @@ class AdminPage(tk.Frame):
         self.search_entry.pack(side=tk.LEFT, fill='x', expand=True, padx=5)
         
         tk.Button(search_frame, text="Tìm kiếm", command=self.search_product_action, width=10).pack(side=tk.LEFT)
-
 
         # --- PHẦN DƯỚI: DANH SÁCH SẢN PHẨM (Treeview) ---
         columns = ("Mã SP", "Tên SP", "Danh mục", "Giá", "Tồn kho", "Đường dẫn Ảnh", "Mô tả") 
@@ -122,44 +119,14 @@ class AdminPage(tk.Frame):
         self.tree.bind("<<TreeviewSelect>>", self.select_item)
         self.load_products()
 
-    # ... (Các hàm browseImage, clear_entries, load_products, select_item, get_input_data, 
-    #      add_product_action, update_product_action, delete_product_action giữ nguyên) ...
-
-    # --- HÀM TÌM KIẾM SẢN PHẨM (MỚI) ---
-    def search_product_action(self):
-        """Xử lý hành động tìm kiếm và hiển thị kết quả."""
-        keyword = self.search_entry.get().strip()
-        
-        if not keyword:
-            messagebox.showwarning("Tìm kiếm", "Vui lòng nhập từ khóa tìm kiếm.")
-            self.load_products() # Tải lại toàn bộ nếu không có từ khóa
-            return
-
-        # Gọi hàm tìm kiếm từ CSDL
-        results = searchProducts(keyword) 
-        
-        # Xóa dữ liệu cũ trên Treeview
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-            
-        if results:
-            for product in results:
-                self.tree.insert('', tk.END, values=product)
-        else:
-            messagebox.showinfo("Kết quả", f"Không tìm thấy sản phẩm nào khớp với '{keyword}'.")
-
-    # Lưu ý: Các hàm logic cũ (browseImage, clear_entries, load_products, select_item, 
-    # get_input_data, add_product_action, update_product_action, delete_product_action)
-    # cần được giữ nguyên như bạn đã gửi ở câu hỏi trước.
-    
-    # ... (Bạn cần chép lại các hàm logic cũ vào đây, hoặc đảm bảo chúng đã có sẵn 
-    #       trong file adminPage.py của bạn) ...
+# ======================================================================
+# --- HÀM LOGIC ---
+# ======================================================================
 
     def get_target_image_dir(self):
         """Trả về đường dẫn tuyệt đối đến thư mục chứa ảnh (App/Images)."""
-        # os.getcwd() là thư mục gốc dự án (vì bạn chạy python -m App.mainApp)
+        # os.getcwd() là thư mục gốc dự án
         target_dir = os.path.join(os.getcwd(), 'App', 'Images')
-        # Đảm bảo thư mục tồn tại (nếu chưa có)
         os.makedirs(target_dir, exist_ok=True) 
         return target_dir
     
@@ -168,7 +135,6 @@ class AdminPage(tk.Frame):
         
         start_dir = self.get_target_image_dir()
         
-        # Mở hộp thoại CHỈ TẠI FOLDER DỰ ÁN
         filepath_absolute = filedialog.askopenfilename(
             title="Chọn ảnh sản phẩm (Đã có sẵn trong App/Images)",
             initialdir=start_dir, 
@@ -177,36 +143,26 @@ class AdminPage(tk.Frame):
         
         if filepath_absolute:
             
-            # --- PHẦN SỬA LỖI QUAN TRỌNG: CHUẨN HÓA VÀ KIỂM TRA ---
-            
-            # 1. Chuẩn hóa đường dẫn để xử lý sự khác biệt giữa / và \ (Windows)
+            # --- CHUẨN HÓA VÀ KIỂM TRA AN TOÀN ---
             normalized_start_dir = os.path.normpath(start_dir)
             normalized_filepath = os.path.normpath(filepath_absolute)
             
-            # 2. Kiểm tra an toàn: Đảm bảo file được chọn nằm trong thư mục App/Images
-            # Thêm dấu 'os.sep' (dấu phân cách thư mục) để kiểm tra chính xác thư mục con
+            # Kiểm tra: Đảm bảo file được chọn nằm trong thư mục App/Images
             if not normalized_filepath.startswith(normalized_start_dir + os.sep) and normalized_filepath != normalized_start_dir:
                 messagebox.showwarning("Cảnh báo", "Vui lòng chỉ chọn ảnh đã được copy vào thư mục App/Images.")
                 return 
 
-            # --- Logic lưu đường dẫn tương đối (đã hoạt động đúng) ---
-            
-            # Lấy tên file: Tu_Lanh.webp
+            # --- Logic lưu đường dẫn tương đối ---
             filename = os.path.basename(filepath_absolute)
-            
-            # Tạo đường dẫn tương đối: App\Images\Tu_Lanh.webp
             relative_path_for_db = os.path.join('App', 'Images', filename)
             
-            # 3. Cập nhật Entry
+            # 3. Cập nhật Entry và Xem trước ảnh
             self.entries['imagePath'].delete(0, tk.END)
             self.entries['imagePath'].insert(0, relative_path_for_db)
             messagebox.showinfo("Đã chọn", f"Đã chọn ảnh: {relative_path_for_db}")
 
             self.load_image_preview(relative_path_for_db)
             
-        else:
-            pass
-
     def clear_entries(self):
         """Xóa nội dung tất cả các trường nhập liệu."""
         for key in self.entries:
@@ -219,6 +175,7 @@ class AdminPage(tk.Frame):
             self.tree.delete(item)
             
         products = getAllProducts()
+        
         # product là tuple 7 phần tử: (sku, name, category, price_str, stockQuantity, imagePath, description)
         for product in products:
             self.tree.insert('', tk.END, values=product)
@@ -230,96 +187,82 @@ class AdminPage(tk.Frame):
         self.clear_entries()
         selected_item = self.tree.focus()
     
-    # KHỞI TẠO TẤT CẢ BIẾN CẦN THIẾT
         image_path_value = None 
         keys = ["sku", "name", "category", "price", "stock", "imagePath", "description"] 
     
         if selected_item:
-        # BIẾN values CHỈ ĐƯỢC TẠO RA KHI CÓ selected_item
             values = self.tree.item(selected_item, 'values')
         
-        # CHUYỂN VÒNG LẶP FOR VÀO BÊN TRONG KHỐI IF
-        # (Chỉ chạy khi values đã được định nghĩa)
             for i, (key, value) in enumerate(zip(keys, values)):
                 display_value = "" if value is None else value
             
-            # Xử lý trường Category (Combobox)
                 if key == "category":
-                # Đảm bảo bạn xóa nội dung entry trước khi set (clear_entries đã làm)
                     self.entries[key].set(display_value) 
                 else:
                     self.entries[key].insert(0, display_value)
             
-            # Lấy đường dẫn ảnh để tải
                 if key == "imagePath":
                     image_path_value = display_value
-        self.load_image_preview(image_path_value)
-                        
+                    
+            self.load_image_preview(image_path_value)
+                    
     def get_input_data(self):
         """Lấy dữ liệu từ các trường nhập liệu, chuẩn hóa giá/tồn kho."""
-        data = {k: self.entries[k].get() for k in self.entries}
+        data = {k: self.entries[k].get().strip() for k in self.entries}
         
         # Kiểm tra SKU và Tên SP không rỗng 
         if not data['sku'] or not data['name']:
-              messagebox.showerror("Lỗi Dữ liệu", "Mã SP và Tên SP không được để trống.")
-              return None
+             messagebox.showerror("Lỗi Dữ liệu", "Mã SP và Tên SP không được để trống.")
+             return None
             
         try:
             # Chuyển đổi giá và tồn kho sang định dạng số
-            data['price'] = float(data['price'].replace(',', '')) 
+            # Giá được lưu trong Treeview có dấu chấm (1.000.000), cần loại bỏ trước khi chuyển float
+            price_str_clean = data['price'].replace('.', '').replace(',', '')
+            data['price'] = float(price_str_clean)
             data['stock'] = int(data['stock'])
             
             # Xử lý các trường có thể là NULL: Gửi None nếu chuỗi rỗng
-            data['imagePath'] = data.get('imagePath', '').strip() or None
-            data['description'] = data.get('description', '').strip() or None
+            data['imagePath'] = data['imagePath'] or None
+            data['description'] = data['description'] or None
             
             return data
         except ValueError:
             messagebox.showerror("Lỗi Dữ liệu", "Giá và Tồn kho phải là số hợp lệ.")
             return None
 
-    def add_product_action(self):
-        data = self.get_input_data()
-        if data:
-            # Truyền thêm imagePath và description
-            success, message = addProduct(data['sku'], data['name'], data['category'], data['price'], data['stock'], data['imagePath'], data['description']) 
-            if success:
-                messagebox.showinfo("Thành công", message)
-                self.load_products()
-            else:
-                messagebox.showerror("Lỗi", message)
-
     def update_product_action(self):
         data = self.get_input_data()
         
         if data:
-            # Dữ liệu đã hợp lệ và có SKU
             sku_to_update = data['sku']
             
-            # Đảm bảo bạn gọi hàm updateProduct với 7 tham số
             success, message = updateProduct(sku_to_update, 
-                                            data['name'], 
-                                            data['category'], 
-                                            data['price'], 
-                                            data['stock'], 
-                                            data['imagePath'], 
-                                            data['description']) 
+                                             data['name'], 
+                                             data['category'], 
+                                             data['price'], 
+                                             data['stock'], 
+                                             data['imagePath'], 
+                                             data['description']) 
             if success:
                 messagebox.showinfo("Thành công", message)
                 self.load_products()
+                # Tải lại danh sách sản phẩm cho trang POS (nếu POSPage đã tồn tại)
+                if "POSPage" in self.controller.frames:
+                    self.controller.frames["POSPage"].load_products_list()
             else:
                 messagebox.showerror("Lỗi", message)
-        else:
-            # Lỗi sẽ được xử lý bởi get_input_data (thiếu SKU/Tên hoặc lỗi số)
-            pass
 
     def delete_product_action(self):
-        sku_to_delete = self.entries['sku'].get() 
+        sku_to_delete = self.entries['sku'].get().strip()
         if sku_to_delete:
             if messagebox.askyesno("Xác nhận", f"Bạn có chắc chắn muốn 'xóa' (set tồn kho về 0) sản phẩm Mã SP {sku_to_delete}?"):
                 if deleteProduct(sku_to_delete):
                     messagebox.showinfo("Thành công", "Đã 'xóa' sản phẩm (Tồn kho = 0).")
                     self.load_products()
+                    # Tải lại danh sách sản phẩm cho trang POS
+                    if "POSPage" in self.controller.frames:
+                        self.controller.frames["POSPage"].load_products_list()
                 else:
                     messagebox.showerror("Lỗi", "Không thể xóa sản phẩm.")
         else:
@@ -328,7 +271,6 @@ class AdminPage(tk.Frame):
     def add_product_action(self):
         data = self.get_input_data()
         if data:
-            # Truyền đúng 7 tham số
             success, message = addProduct(data['sku'], 
                                           data['name'], 
                                           data['category'], 
@@ -339,8 +281,32 @@ class AdminPage(tk.Frame):
             if success:
                 messagebox.showinfo("Thành công", message)
                 self.load_products()
+                # Tải lại danh sách sản phẩm cho trang POS
+                if "POSPage" in self.controller.frames:
+                    self.controller.frames["POSPage"].load_products_list()
             else:
                 messagebox.showerror("Lỗi", message)
+
+    def search_product_action(self):
+        """Xử lý hành động tìm kiếm và hiển thị kết quả."""
+        keyword = self.search_entry.get().strip()
+        
+        # Xóa dữ liệu cũ trên Treeview
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        if not keyword:
+            messagebox.showwarning("Tìm kiếm", "Không có từ khóa. Đang tải lại toàn bộ sản phẩm.")
+            self.load_products() # Tải lại toàn bộ nếu không có từ khóa
+            return
+
+        results = searchProducts(keyword) 
+            
+        if results:
+            for product in results:
+                self.tree.insert('', tk.END, values=product)
+        else:
+            messagebox.showinfo("Kết quả", f"Không tìm thấy sản phẩm nào khớp với '{keyword}'.")
 
     def load_image_preview(self, imagePath):
         """Tải và hiển thị ảnh xem trước từ đường dẫn tương đối."""
@@ -352,10 +318,8 @@ class AdminPage(tk.Frame):
         
         if imagePath:
             # 1. Chuyển đổi sang đường dẫn tuyệt đối
-            # Dùng os.path.normpath để xử lý dấu '/' hay '\' trên các hệ điều hành khác nhau
             absolute_path = os.path.normpath(os.path.join(os.getcwd(), imagePath)) 
             
-            # KIỂM TRA ĐƯỜNG DẪN TUYỆT ĐỐI
             if os.path.exists(absolute_path):
                 try:
                     # 2. Mở ảnh và Resize
@@ -370,8 +334,7 @@ class AdminPage(tk.Frame):
                     print(f"Lỗi tải ảnh xem trước (Admin): {e}")
                     self.image_preview_label.config(image='', text="Lỗi tải ảnh", width=20, height=10)
             else:
-                # <-- Kết quả: "Không tìm thấy file"
                 self.image_preview_label.config(image='', text="Không tìm thấy file", width=20, height=10)
         else:
             # Đường dẫn rỗng
-            pass # Giữ nguyên text "Ảnh Xem trước"
+            pass

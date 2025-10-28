@@ -9,6 +9,7 @@ Tên Server: Đảm bảo bạn biết tên Server của mình (ví dụ: LAPTOP
 
 chạy lệnh này để kết nối Vscode với sql service
 pip install pyodbc
+pip install Pillow
 ```
 2. Các Bước Tạo Database
 ```
