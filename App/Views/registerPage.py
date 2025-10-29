@@ -87,8 +87,14 @@ class RegisterPage(tk.Frame):
                   font=("Times New Roman", 13),
                   width=17,
 
-                  command=lambda: controller.show_frame("LoginPage")
+                  command=lambda: controller.show_frame("LoginPage"),
+                  relief="flat", borderwidth=0
+
         ).pack(pady=10)
+
+
+
+        
 
     # --- HÀM KIỂM TRA DUY NHẤT REAL-TIME (CHỈ CHO USERNAME) ---
     def check_unique_input(self, event):
