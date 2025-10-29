@@ -3,7 +3,7 @@ import pyodbc
 # ----------------------------------------------------------------------
 # --- CẤU HÌNH KẾT NỐI CSDL ---
 # ----------------------------------------------------------------------
-SERVER_NAME = r'LAPTOP-LOMSLJ90\SQLEXPRESS'
+SERVER_NAME = r'LAPTOP-T018HFGU'
 DATABASE_NAME = 'salesProjectDB'
 DRIVER = '{ODBC Driver 17 for SQL Server}'
 # ----------------------------------------------------------------------
