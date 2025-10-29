@@ -112,6 +112,8 @@ class LoginPage(tk.Frame):
             
             # Đăng nhập thành công
             if role.lower() == 'admin':
+                admin_page_instance = self.controller.frames["AdminPage"]
+                admin_page_instance.refresh_page()  # Làm mới dữ liệu thật sự của frame đang dùng
                 self.controller.show_frame("AdminPage") 
             else:
                 self.controller.show_frame("POSPage")
