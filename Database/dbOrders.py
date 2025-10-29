@@ -1,110 +1,176 @@
 import pyodbc
 from .dbConnector import getDbConnection
 
-# ----------------------------------------------------------------------
-# --- HÀM TIỆN ÍCH ---
-# ----------------------------------------------------------------------
-
 def format_currency(number):
-    """Định dạng số thành chuỗi tiền tệ Việt Nam (1.000.000)."""
     if number is None:
         return "0"
-    # Thay thế dấu phẩy mặc định bằng dấu chấm theo chuẩn VN
     return "{:,.0f}".format(number).replace(",", ".")
-
-# ----------------------------------------------------------------------
-# --- LOGIC TẠO ĐƠN HÀNG VÀ TRỪ TỒN KHO (TRANSACTION) ---
-# ----------------------------------------------------------------------
 
 def createOrder(userID, items_list):
     """
-    Tạo một đơn hàng mới (Orders) và các chi tiết (OrderItems), 
-    đồng thời TRỪ tồn kho (Products) trong một Giao dịch (Transaction) DUY NHẤT.
-
-    :param userID: ID người dùng tạo đơn hàng.
-    :param items_list: Danh sách các dict chứa {'sku', 'quantity', 'unitPrice'}.
-    :return: (True, orderID) nếu thành công, (False, error_message) nếu thất bại.
+    Tạo đơn hàng mới, ghi vào Orders và OrderItems, đồng thời trừ tồn kho.
     """
     conn = getDbConnection()
-    if not conn: 
+    if not conn:
         return (False, "Lỗi kết nối CSDL.")
     
-    # Bắt đầu Transaction 
-    conn.autocommit = False 
+    conn.autocommit = False
     cursor = conn.cursor()
     orderID = None
 
     try:
         if not items_list:
-             return (False, "Giỏ hàng trống. Không thể tạo đơn hàng.")
+            return (False, "Giỏ hàng trống. Không thể tạo đơn hàng.")
 
-        # 1. Tính tổng tiền
-        raw_totalAmount = sum(item['quantity'] * item['unitPrice'] for item in items_list)
-        totalAmount = float(raw_totalAmount)
-        
-        # 2. Chèn vào bảng Orders
+        # 1️⃣ Tính tổng tiền
+        totalAmount = float(sum(item['quantity'] * item['unitPrice'] for item in items_list))
+
+        # 2️⃣ Chèn vào bảng Orders (không dùng OUTPUT để tránh lỗi ODBC)
         cursor.execute("""
-            INSERT INTO Orders (userID, totalAmount, orderDate, status) 
+            INSERT INTO Orders (userID, totalAmount, orderDate, status)
             VALUES (?, ?, GETDATE(), ?)
         """, (userID, totalAmount, 'Completed'))
         
-        # Lấy orderID mới được tạo
-        cursor.execute("SELECT SCOPE_IDENTITY()")
-        fetch_result = cursor.fetchone()
-        
-        if fetch_result and fetch_result[0] is not None:
-            orderID = int(fetch_result[0])
-        else:
-            # Lỗi không lấy được ID sau khi INSERT
+        # Lấy orderID mới nhất (theo người dùng)
+        cursor.execute("SELECT TOP 1 orderID FROM Orders WHERE userID = ? ORDER BY orderID DESC", (userID,))
+        row = cursor.fetchone()
+        if not row:
             conn.rollback()
-            print(f"DEBUG: Lỗi INSERT Orders - SCOPE_IDENTITY trả về None.")
-            return (False, "Không thể tạo mã đơn hàng mới. Lỗi chèn dữ liệu vào bảng Orders.")
+            return (False, "Không thể lấy mã đơn hàng vừa tạo.")
         
-        # 3. Chèn vào OrderItems VÀ Trừ tồn kho
+        orderID = row[0]
+
+        # 3️⃣ Trừ tồn kho và thêm chi tiết đơn hàng
         for item in items_list:
             sku = item['sku']
             quantity = item['quantity']
             unitPrice = item['unitPrice']
-            
-            # 3a. Trừ tồn kho: Đảm bảo tồn kho >= số lượng cần trừ
-            update_query = """
-                UPDATE Products 
-                SET stockQuantity = stockQuantity - ? 
-                WHERE SKU = ? AND stockQuantity >= ?
-            """
-            cursor.execute(update_query, quantity, sku, quantity)
-            
-            # Kiểm tra: Nếu không có dòng nào được cập nhật -> Hết hàng/SKU sai
-            if cursor.rowcount == 0:
-                conn.rollback() 
-                return (False, f"Lỗi tồn kho hoặc SKU không hợp lệ ({sku}). Không đủ hàng để trừ.")
 
-            # 3b. Chèn vào OrderItems
+            # Trừ tồn kho
+            cursor.execute("""
+                UPDATE Products
+                SET stockQuantity = stockQuantity - ?
+                WHERE SKU = ? AND stockQuantity >= ?
+            """, (quantity, sku, quantity))
+
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return (False, f"Không đủ hàng tồn cho sản phẩm {sku}.")
+
+            # Thêm chi tiết đơn hàng
             cursor.execute("""
                 INSERT INTO OrderItems (orderID, SKU, quantity, unitPrice)
                 VALUES (?, ?, ?, ?)
             """, (orderID, sku, quantity, unitPrice))
-            
-        conn.commit() # Commit tất cả các thay đổi
+
+        # 4️⃣ Commit
+        conn.commit()
         return (True, orderID)
 
     except pyodbc.IntegrityError as e:
         conn.rollback()
-        error_msg = str(e)
-        print(f"LỖI SQL INTEGRITY: {e}") 
-        
-        # Bắt lỗi Khóa ngoại (Ví dụ: userID không tồn tại)
-        if 'FOREIGN KEY' in error_msg and 'Users' in error_msg:
-             return (False, "Lỗi: Mã người dùng (userID) không tồn tại. Vui lòng đăng nhập lại.")
-        return (False, f"Lỗi ràng buộc CSDL: {e}")
-        
+        msg = str(e)
+        if 'FOREIGN KEY' in msg and 'Users' in msg:
+            return (False, "Lỗi: userID không tồn tại. Vui lòng đăng nhập lại.")
+        return (False, f"Lỗi ràng buộc: {e}")
+
     except Exception as e:
         conn.rollback()
-        print(f"LỖI TẠO ĐƠN HÀNG KHÔNG XÁC ĐỊNH: {e}") 
-        return (False, f"Lỗi hệ thống khi tạo đơn hàng: {e}")
-        
+        print(f"LỖI TẠO ĐƠN HÀNG KHÔNG XÁC ĐỊNH: {e}")
+        return (False, f"Lỗi khi tạo đơn hàng: {e}")
+
     finally:
-        # Quan trọng: Đặt lại autocommit và đóng kết nối
         conn.autocommit = True
-        if conn:
-            conn.close()
+        conn.close()
+
+def getAllOrdersForAdmin():
+    """Admin xem toàn bộ đơn hàng kèm người mua và sản phẩm."""
+    conn = getDbConnection()
+    if not conn:
+        return []
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT 
+                O.orderID,
+                O.orderDate,
+                O.totalAmount,
+                O.status,
+                U.fullName,
+                U.userName,
+                P.name AS productName,
+                OI.quantity,
+                OI.unitPrice
+            FROM Orders O
+            JOIN Users U ON O.userID = U.userID
+            JOIN OrderItems OI ON O.orderID = OI.orderID
+            JOIN Products P ON OI.SKU = P.SKU
+            ORDER BY O.orderDate DESC
+        """)
+        rows = cursor.fetchall()
+        return [
+            {
+                "orderID": r.orderID,
+                "orderDate": r.orderDate,
+                "totalAmount": r.totalAmount,
+                "status": r.status,
+                "fullName": r.fullName,
+                "userName": r.userName,
+                "productName": r.productName,
+                "quantity": r.quantity,
+                "unitPrice": r.unitPrice,
+            }
+            for r in rows
+        ]
+    except Exception as e:
+        print("Lỗi lấy đơn hàng cho admin:", e)
+        return []
+    finally:
+        conn.close()
+
+def getAllOrders():
+    conn = getDbConnection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT 
+                o.orderID,
+                o.orderDate,
+                u.userName,
+                u.fullName,
+                o.totalAmount,
+                o.status
+            FROM Orders o
+            JOIN Users u ON o.userID = u.userID
+            ORDER BY o.orderDate DESC
+        """)
+        columns = [col[0] for col in cursor.description]
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    except Exception as e:
+        print("Lỗi lấy danh sách đơn hàng:", e)
+        return []
+    finally:
+        conn.close()
+
+def getOrderDetails(orderID):
+    conn = getDbConnection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT 
+                oi.SKU,
+                p.name AS productName,
+                oi.quantity,
+                oi.unitPrice,
+                (oi.quantity * oi.unitPrice) AS totalPrice
+            FROM OrderItems oi
+            JOIN Products p ON oi.SKU = p.SKU
+            WHERE oi.orderID = ?
+        """, (orderID,))
+        columns = [col[0] for col in cursor.description]
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    except Exception as e:
+        print("Lỗi lấy chi tiết đơn hàng:", e)
+        return []
+    finally:
+        conn.close()

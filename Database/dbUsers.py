@@ -40,47 +40,49 @@ def checkLogin(username, password):
 
 def registerUser(user_id, username, password, fullname, phone, address):
     """
-    Thực hiện đăng ký người dùng mới.
-    Tạo user ID ngẫu nhiên nếu user_id là None.
+    Đăng ký người dùng mới.
+    - Tự động sinh userID nếu user_id là None.
+    - Mặc định userRole = 'User' (viết hoa đúng ràng buộc CHECK).
     """
     conn = getDbConnection()
-    if not conn: 
+    if not conn:
         return False, "Không thể kết nối đến CSDL."
-        
+
     cursor = conn.cursor()
-    
+
     try:
-        # 1. Tạo và kiểm tra ID duy nhất (8 ký tự đầu của UUID)
+        # 1️ Tạo userID ngẫu nhiên nếu chưa có
         if user_id is None:
-            new_user_id = str(uuid.uuid4())[:8].upper()
+            # Dạng: US + 6 ký tự đầu UUID (VD: US3A92F)
+            new_user_id = "US" + str(uuid.uuid4()).replace("-", "")[:6].upper()
             while checkUserIDExists(new_user_id):
-                new_user_id = str(uuid.uuid4())[:8].upper()
+                new_user_id = "US" + str(uuid.uuid4()).replace("-", "")[:6].upper()
             user_id = new_user_id
-        
-        # 2. Thực hiện chèn
+
+        # 2️ Chèn dữ liệu vào bảng Users
         sql = """
             INSERT INTO Users (userID, userName, password, fullName, phone, address, userRole)
-            VALUES (?, ?, ?, ?, ?, ?, 'user')
+            VALUES (?, ?, ?, ?, ?, ?, 'User')
         """
-        cursor.execute(sql, user_id, username, password, fullname, phone, address)
+        cursor.execute(sql, (user_id, username, password, fullname, phone, address))
         conn.commit()
-        return True, f"Đăng ký thành công!"
+        return True, f"Đăng ký thành công! Mã người dùng của bạn là {user_id}"
 
     except pyodbc.IntegrityError as e:
         conn.rollback()
         error_msg = str(e)
 
-        # Bắt lỗi Khóa chính (userID) hoặc Khóa duy nhất (userName)
-        if 'PRIMARY KEY' in error_msg or 'userID' in error_msg:
-            return False, "Lỗi: Mã Nhân viên đã bị tài khoản khác sử dụng ngay lập tức."
-        elif 'UNIQUE' in error_msg or 'userName' in error_msg:
-            return False, "Lỗi: Tên đăng nhập đã tồn tài vui lòng sử dụng tên đăng nhập khác."
+        # Bắt lỗi khóa chính hoặc tên đăng nhập trùng
+        if "PRIMARY KEY" in error_msg or "userID" in error_msg:
+            return False, "Lỗi: Mã người dùng đã tồn tại."
+        elif "UNIQUE" in error_msg or "userName" in error_msg:
+            return False, "Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác."
         return False, f"Lỗi ràng buộc CSDL: {e}"
-            
+
     except Exception as e:
         conn.rollback()
         return False, f"Lỗi không xác định khi đăng ký: {e}"
-            
+
     finally:
         if conn:
             conn.close()
@@ -92,31 +94,28 @@ def registerUser(user_id, username, password, fullname, phone, address):
 def checkUserIDExists(user_id):
     """Kiểm tra user ID đã tồn tại trong CSDL hay chưa."""
     conn = getDbConnection()
-    if not conn: 
+    if not conn:
         return False
-        
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT userID FROM Users WHERE userID = ?", user_id)
+        cursor.execute("SELECT userID FROM Users WHERE userID = ?", (user_id,))
         return cursor.fetchone() is not None
     except Exception:
         return False
     finally:
-        if conn:
-            conn.close()
+        conn.close()
+
 
 def checkUserNameExists(username):
     """Kiểm tra tên đăng nhập đã tồn tại trong CSDL hay chưa."""
     conn = getDbConnection()
-    if not conn: 
+    if not conn:
         return False
-        
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT userName FROM Users WHERE userName = ?", username)
+        cursor.execute("SELECT userName FROM Users WHERE userName = ?", (username,))
         return cursor.fetchone() is not None
     except Exception:
         return False
     finally:
-        if conn:
-            conn.close()
+        conn.close()
