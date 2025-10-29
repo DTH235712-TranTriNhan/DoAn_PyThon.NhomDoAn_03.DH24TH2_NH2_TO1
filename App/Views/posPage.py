@@ -123,7 +123,7 @@ class POSPage(tk.Frame):
             
         products = getProductsForPOS()
         for product in products:
-            sku, name, _, price_str, *_ = product 
+            sku, name, _, price_str, *_ = product
             self.tree.insert('', tk.END, values=(sku, name, price_str), iid=sku) 
 
     def display_product_detail(self, event):

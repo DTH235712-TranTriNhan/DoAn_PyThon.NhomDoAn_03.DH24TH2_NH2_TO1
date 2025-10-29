@@ -62,7 +62,7 @@ def getAllProducts():
     return products
 
 def getProductsForPOS():
-    """Lấy sản phẩm CHỈ CÓ TỒN KHO > 0 (Dùng cho POSPage)."""
+    """Lấy tất cả sản phẩm (kể cả hết hàng) để hiển thị bên POSPage."""
     conn = getDbConnection()
     if not conn: return []
     cursor = conn.cursor()
@@ -70,7 +70,7 @@ def getProductsForPOS():
     
     try:
         # LỌC: Chỉ lấy sản phẩm có stockQuantity > 0
-        query = "SELECT SKU, name, category, price, stockQuantity, ImagePath, Description FROM Products WHERE stockQuantity > 0"
+        query = "SELECT SKU, name, category, price, stockQuantity, ImagePath, Description FROM Products"
         cursor.execute(query)
         rows = cursor.fetchall()
         
@@ -254,6 +254,22 @@ def deleteProduct(sku):
     finally:
         if conn:
             conn.close()
+
+def removeProductPermanently(sku):
+    """Xóa sản phẩm khỏi cơ sở dữ liệu (xóa hoàn toàn)."""
+    conn = getDbConnection()
+    if not conn: 
+        return False, "Không thể kết nối CSDL."
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM Products WHERE SKU = ?", (sku,))
+        conn.commit()
+        return True, f"Đã xóa vĩnh viễn sản phẩm {sku}."
+    except Exception as e:
+        conn.rollback()
+        return False, f"Lỗi khi xóa sản phẩm: {e}"
+    finally:
+        conn.close()
 
 def searchProducts(keyword):
     """Tìm kiếm sản phẩm theo Tên (name) hoặc Mã SP (SKU) và trả về danh sách định dạng."""
