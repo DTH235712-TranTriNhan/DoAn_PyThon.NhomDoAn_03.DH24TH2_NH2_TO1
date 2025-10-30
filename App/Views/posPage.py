@@ -22,7 +22,7 @@ class POSPage(tk.Frame):
         self.create_user_status_frame()
         
         # --- TIÊU ĐỀ CHÍNH ---
-        tk.Label(self, text="TRANG BÁN HÀNG (POS)", font=("Arial", 20, "bold")).pack(pady=10)
+        tk.Label(self, text="TRANG BÁN HÀNG", font=("Times New Roman", 20, "bold"),fg="red").pack(pady=10)
         
         # --- KHUNG CHÍNH (Chia 2 cột) ---
         main_paned_window = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -49,7 +49,8 @@ class POSPage(tk.Frame):
         self.user_label = tk.Label(status_frame, text="Chưa đăng nhập", fg="red")
         self.user_label.pack(side=tk.LEFT, padx=10)
 
-        self.login_button = tk.Button(status_frame, text="Đăng nhập", command=self.show_login_dialog)
+        self.login_button = tk.Button(status_frame, text="Đăng nhập",bg="red", 
+                  fg="white", command=self.show_login_dialog)
         self.login_button.pack(side=tk.RIGHT, padx=10)
 
     def create_product_list_frame(self, parent_window):
@@ -57,14 +58,14 @@ class POSPage(tk.Frame):
         list_frame = tk.LabelFrame(parent_window, text="Danh sách Sản phẩm")
         parent_window.add(list_frame, weight=1)
         
-        columns = ("Mã SP", "Tên SP", "Giá") 
+        columns = ("Mã Sản Phẩm", "Tên Sản Phẩm", "Giá") 
         self.tree = ttk.Treeview(list_frame, columns=columns, show="headings")
-        self.tree.heading("Mã SP", text="Mã SP")
-        self.tree.heading("Tên SP", text="Tên SP")
+        self.tree.heading("Mã Sản Phẩm", text="Mã Sản Phẩm")
+        self.tree.heading("Tên Sản Phẩm", text="Tên Sản Phẩm")
         self.tree.heading("Giá", text="Giá")
         
-        self.tree.column("Mã SP", width=80, anchor=tk.CENTER)
-        self.tree.column("Tên SP", width=200)
+        self.tree.column("Mã Sản Phẩm", width=80, anchor=tk.CENTER)
+        self.tree.column("Tên Sản Phẩm", width=200)
         self.tree.column("Giá", width=100, anchor=tk.E)
         
         self.tree.pack(fill='both', expand=True, padx=5, pady=5)
@@ -81,17 +82,17 @@ class POSPage(tk.Frame):
         self.photo = None 
         
         # 2. Tên Sản phẩm
-        tk.Label(self.detail_frame, text="Tên SP:", font=("Arial", 10, "bold")).pack(anchor='w')
-        self.name_label = tk.Label(self.detail_frame, text="...", anchor='w', font=("Arial", 14))
+        tk.Label(self.detail_frame, text="Tên Sản Phẩm:", font=("Times New Roman", 13, "bold")).pack(anchor='w')
+        self.name_label = tk.Label(self.detail_frame, text="...", anchor='w', font=("Times New Roman", 14))
         self.name_label.pack(fill='x')
         
         # 3. Giá
-        tk.Label(self.detail_frame, text="Giá Bán:", font=("Arial", 10, "bold")).pack(anchor='w', pady=(5, 0))
-        self.price_label = tk.Label(self.detail_frame, text="...", fg="red", font=("Arial", 18, "bold"), anchor='w')
+        tk.Label(self.detail_frame, text="Giá Bán:", font=("Times New Roman", 13, "bold")).pack(anchor='w', pady=(5, 0))
+        self.price_label = tk.Label(self.detail_frame, text="...", fg="red", font=("Times New Roman", 18, "bold"), anchor='w')
         self.price_label.pack(fill='x')
 
         # 4. Mô tả
-        tk.Label(self.detail_frame, text="Mô tả:", font=("Arial", 10, "bold")).pack(anchor='w', pady=(5, 0))
+        tk.Label(self.detail_frame, text="Mô tả:", font=("Times New Roman", 13, "bold")).pack(anchor='w', pady=(5, 0))
         scrollbar = ttk.Scrollbar(self.detail_frame)
         self.description_text = tk.Text(self.detail_frame, height=5, wrap='word', yscrollcommand=scrollbar.set) 
         scrollbar.config(command=self.description_text.yview)
@@ -104,12 +105,12 @@ class POSPage(tk.Frame):
         
         self.add_to_cart_button = tk.Button(button_frame, text="➕ Thêm vào Giỏ", 
                                             command=self.add_to_cart, 
-                                            bg="#2196F3", fg="white", font=("Arial", 12, "bold"))
+                                            bg="#2196F3", fg="white", font=("Times New Roman", 12, "bold"))
         self.add_to_cart_button.pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
         
         self.checkout_button = tk.Button(button_frame, text="🛒 Thanh toán", 
                                             command=self.show_checkout_dialog, 
-                                            bg="#FF9800", fg="white", font=("Arial", 12, "bold"), state=tk.DISABLED) 
+                                            bg="#FF9800", fg="white", font=("Times New Roman", 12, "bold"), state=tk.DISABLED) 
         self.checkout_button.pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
 
     # ----------------------------------------------------------------------
@@ -293,8 +294,8 @@ class POSPage(tk.Frame):
         cart_frame.pack(padx=20, pady=10, fill='both', expand=True)
 
         # Treeview
-        cart_tree = ttk.Treeview(cart_frame, columns=("Tên SP", "SL", "Đơn giá", "Tổng"), show="headings")
-        cart_tree.heading("Tên SP", text="Tên SP")
+        cart_tree = ttk.Treeview(cart_frame, columns=("Tên Sản Phẩm", "SL", "Đơn giá", "Tổng"), show="headings")
+        cart_tree.heading("Tên Sản Phẩm", text="Tên Sản Phẩm")
         cart_tree.heading("SL", text="SL", anchor=tk.CENTER)
         cart_tree.heading("Đơn giá", text="Đơn giá", anchor=tk.E)
         cart_tree.heading("Tổng", text="Tổng", anchor=tk.E)
@@ -320,16 +321,16 @@ class POSPage(tk.Frame):
         # Khung tổng tiền
         total_frame = tk.Frame(checkout_window)
         total_frame.pack(fill='x', padx=20, pady=(0, 10))
-        tk.Label(total_frame, text="TỔNG THANH TOÁN:", font=("Arial", 14, "bold")).pack(side=tk.LEFT)
+        tk.Label(total_frame, text="TỔNG THANH TOÁN:", font=("Times New Roman", 14, "bold")).pack(side=tk.LEFT)
         tk.Label(total_frame, 
                  text=f"{format_currency(total_amount)} VNĐ", 
                  fg="red", 
-                 font=("Arial", 16, "bold")).pack(side=tk.RIGHT)
+                 font=("Times New Roman", 16, "bold")).pack(side=tk.RIGHT)
         
         # Nút xác nhận
         confirm_button = tk.Button(checkout_window, text="XÁC NHẬN THANH TOÁN", 
                                    command=lambda: self.process_order(checkout_window, total_amount),
-                                   bg="#4CAF50", fg="white", font=("Arial", 12, "bold"))
+                                   bg="#4CAF50", fg="white", font=("Times New Roman", 12, "bold"))
         confirm_button.pack(fill='x', padx=20, pady=(0, 15))
 
 
