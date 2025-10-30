@@ -29,13 +29,14 @@ class AdminPage(tk.Frame):
         header_frame = tk.Frame(product_tab)
         header_frame.pack(fill='x', pady=10)
 
-        tk.Label(header_frame, text="QUẢN LÝ SẢN PHẨM", font=("Arial", 20, "bold")).pack(side=tk.LEFT, padx=10)
-        tk.Button(header_frame, text="Đăng xuất", command=lambda: controller.show_frame("LoginPage")).pack(side=tk.RIGHT, padx=10)
+        tk.Label(header_frame, text="QUẢN LÝ SẢN PHẨM", font=("Times New Roman", 20, "bold"),fg="red").pack(side=tk.LEFT, padx=10)
+        tk.Button(header_frame, text="Đăng xuất",bg="red", 
+                  fg="white", command=lambda: controller.show_frame("LoginPage")).pack(side=tk.RIGHT, padx=10)
 
         input_frame = tk.LabelFrame(product_tab, text="Thông tin Sản phẩm", padx=10, pady=10)
         input_frame.pack(fill='x', padx=10)
 
-        labels = ["Mã SP", "Tên SP", "Danh mục", "Giá", "Tồn kho", "Đường dẫn Ảnh", "Mô tả"]
+        labels = ["Mã Sản Phẩm ", "Tên Sản Phẩm", "Danh mục", "Giá", "Tồn kho", "Đường dẫn Ảnh", "Mô tả"]
         keys = ["sku", "name", "category", "price", "stock", "imagePath", "description"]
         input_frame.grid_columnconfigure(1, weight=1)
         input_frame.grid_columnconfigure(3, weight=1)
@@ -88,14 +89,16 @@ class AdminPage(tk.Frame):
         tk.Label(search_frame, text="Tìm kiếm (SKU/Tên):", width=15).pack(side=tk.LEFT)
         self.search_entry = tk.Entry(search_frame)
         self.search_entry.pack(side=tk.LEFT, fill='x', expand=True, padx=5)
-        tk.Button(search_frame, text="Tìm kiếm", command=self.search_product_action, width=10).pack(side=tk.LEFT)
+        tk.Button(search_frame, text="Tìm kiếm", command=self.search_product_action, width=10,
+                  bg="red", 
+                  fg="white").pack(side=tk.LEFT)
 
-        columns = ("Mã SP", "Tên SP", "Danh mục", "Giá", "Tồn kho", "Đường dẫn Ảnh", "Mô tả")
+        columns = ("Mã Sản Phẩm", "Tên Sản Phẩm", "Danh mục", "Giá", "Tồn kho", "Đường dẫn Ảnh", "Mô tả")
         self.tree = ttk.Treeview(product_tab, columns=columns, show="headings")
         for col in columns:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=80, anchor=tk.CENTER)
-        self.tree.column("Tên SP", width=150)
+        self.tree.column("Tên Sản Phẩm", width=150)
         self.tree.column("Đường dẫn Ảnh", width=120)
         self.tree.column("Mô tả", width=150)
         self.tree.pack(fill='both', expand=True, padx=10, pady=10)
@@ -235,7 +238,7 @@ class AdminPage(tk.Frame):
         
         # Kiểm tra SKU và Tên SP không rỗng 
         if not data['sku'] or not data['name']:
-             messagebox.showerror("Lỗi Dữ liệu", "Mã SP và Tên SP không được để trống.")
+             messagebox.showerror("Lỗi Dữ liệu", "Mã sản phẩm và Tên sản phẩm không được để trống.")
              return None
             
         try:
