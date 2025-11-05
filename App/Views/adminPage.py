@@ -2,7 +2,8 @@ import tkinter as tk
 from tkinter import Toplevel, messagebox, filedialog 
 import tkinter.ttk as ttk
 import os 
-from Database.dbProducts import addProduct, deleteProduct, getAllProducts, updateProduct, searchProducts, removeProductPermanently
+from App.Views.posPage import POSPage
+from Database.dbProducts import addProduct, discontinueProduct, getAllProductsForAdmin, updateProduct, searchProducts, removeProductPermanently, resumeProduct
 from PIL import Image, ImageTk
 from Database.dbOrders import getAllOrdersForAdmin, getAllOrders, getOrderDetails
 
@@ -22,8 +23,10 @@ class AdminPage(tk.Frame):
 
         product_tab = tk.Frame(notebook)
         order_tab = tk.Frame(notebook)
+        pos_view_tab = tk.Frame(notebook)
         notebook.add(product_tab, text="Quản lý sản phẩm")
         notebook.add(order_tab, text="Quản lý đơn hàng")
+        notebook.add(pos_view_tab, text="Xem sản phẩm POS")
 
         # ---------------------- TAB 1: QUẢN LÝ SẢN PHẨM ----------------------
         header_frame = tk.Frame(product_tab)
@@ -80,20 +83,21 @@ class AdminPage(tk.Frame):
         button_frame.grid(row=4, column=0, columnspan=5, pady=10)
         tk.Button(button_frame, text="Thêm", command=self.add_product_action, width=10).pack(side=tk.LEFT, padx=10)
         tk.Button(button_frame, text="Sửa", command=self.update_product_action, width=10).pack(side=tk.LEFT, padx=10)
-        tk.Button(button_frame, text="Xóa", command=self.delete_product_action, width=10).pack(side=tk.LEFT, padx=10)
+        tk.Button(button_frame, text="Ngừng Kinh Doanh", command=self.discontinue_product_action, width=15, bg="#f0ad4e", fg="white").pack(side=tk.LEFT, padx=10)
+        tk.Button(button_frame, text="Kinh doanh lại", command=self.resume_product_action, width=15, bg="#5cb85c", fg="white").pack(side=tk.LEFT, padx=10)
         tk.Button(button_frame, text="Xóa vĩnh viễn", command=self.remove_product_action, width=15, bg="#d9534f", fg="white").pack(side=tk.LEFT, padx=10)
         tk.Button(button_frame, text="Làm mới", command=self.load_products, width=10).pack(side=tk.LEFT, padx=10)
 
         search_frame = tk.Frame(product_tab, padx=10, pady=5)
         search_frame.pack(fill='x')
-        tk.Label(search_frame, text="Tìm kiếm (SKU/Tên):", width=15).pack(side=tk.LEFT)
+        tk.Label(search_frame, text="Tìm kiếm:", width=15).pack(side=tk.LEFT)
         self.search_entry = tk.Entry(search_frame)
         self.search_entry.pack(side=tk.LEFT, fill='x', expand=True, padx=5)
         tk.Button(search_frame, text="Tìm kiếm", command=self.search_product_action, width=10,
                   bg="red", 
                   fg="white").pack(side=tk.LEFT)
 
-        columns = ("Mã Sản Phẩm", "Tên Sản Phẩm", "Danh mục", "Giá", "Tồn kho", "Đường dẫn Ảnh", "Mô tả")
+        columns = ("Mã Sản Phẩm", "Tên Sản Phẩm", "Danh mục", "Giá", "Tồn kho", "Đường dẫn Ảnh", "Mô tả", "Trạng thái")
         self.tree = ttk.Treeview(product_tab, columns=columns, show="headings")
         for col in columns:
             self.tree.heading(col, text=col)
@@ -101,6 +105,7 @@ class AdminPage(tk.Frame):
         self.tree.column("Tên Sản Phẩm", width=150)
         self.tree.column("Đường dẫn Ảnh", width=120)
         self.tree.column("Mô tả", width=150)
+        self.tree.column("Trạng thái", width=100, anchor=tk.CENTER)
         self.tree.pack(fill='both', expand=True, padx=10, pady=10)
         self.tree.bind("<<TreeviewSelect>>", self.select_item)
         self.load_products()
@@ -119,6 +124,10 @@ class AdminPage(tk.Frame):
         self.order_tree.pack(fill='both', expand=True)
         tk.Button(order_frame, text="Tải lại danh sách", command=self.load_orders_admin).pack(pady=5)
         self.order_tree.bind("<Double-1>", self.show_order_details)
+
+        # ---------------------- TAB 3: XEM SẢN PHẨM POS ----------------------
+        self.pos_view = POSPage(parent=pos_view_tab, controller=controller, is_admin_preview=True) 
+        self.pos_view.pack(fill="both", expand=True)
 
 # ======================================================================
 # --- HÀM LOGIC ---
@@ -200,12 +209,22 @@ class AdminPage(tk.Frame):
         for item in self.tree.get_children():
             self.tree.delete(item)
             
-        products = getAllProducts()
-        
-        # product là tuple 7 phần tử: (sku, name, category, price_str, stockQuantity, imagePath, description)
-        for product in products:
-            self.tree.insert('', tk.END, values=product)
+        products = getAllProductsForAdmin()
 
+        for product in products:
+            # Trích xuất các giá trị theo thứ tự cột của Treeview
+            values_to_display = (
+                product['SKU'], 
+                product['name'], 
+                product['category'], 
+                product['price'], 
+                product['stock'],
+                product['imagePath'],
+                product['description'],
+                product['status_text'] 
+            )
+            self.tree.insert('', tk.END, values=values_to_display, tags=(product['status_text'].replace(' ', ''),))
+        
         self.clear_entries()
 
     def select_item(self, event):
@@ -214,12 +233,12 @@ class AdminPage(tk.Frame):
         selected_item = self.tree.focus()
     
         image_path_value = None 
-        keys = ["sku", "name", "category", "price", "stock", "imagePath", "description"] 
+        keys = ["sku", "name", "category", "price", "stock", "imagePath", "description", "status"] 
     
         if selected_item:
             values = self.tree.item(selected_item, 'values')
         
-            for i, (key, value) in enumerate(zip(keys, values)):
+            for i, (key, value) in enumerate(zip(keys[:7], values[:7])):
                 display_value = "" if value is None else value
             
                 if key == "category":
@@ -283,7 +302,7 @@ class AdminPage(tk.Frame):
         sku_to_delete = self.entries['sku'].get().strip()
         if sku_to_delete:
             if messagebox.askyesno("Xác nhận", f"Bạn có chắc chắn muốn 'xóa' (set tồn kho về 0) sản phẩm Mã SP {sku_to_delete}?"):
-                if deleteProduct(sku_to_delete):
+                if discontinueProduct(sku_to_delete):
                     messagebox.showinfo("Thành công", "Đã 'xóa' sản phẩm (Tồn kho = 0).")
                     self.load_products()
                     # Tải lại danh sách sản phẩm cho trang POS
@@ -447,3 +466,44 @@ class AdminPage(tk.Frame):
             self.load_orders_admin()     # Tải lại danh sách đơn hàng
         except Exception as e:
             print(f"Lỗi khi làm mới AdminPage: {e}")
+    
+    def resume_product_action(self):
+        """Xử lý hành động "Kinh doanh lại" (set isActive = 1)."""
+        sku_to_resume = self.entries['sku'].get().strip()
+        if not sku_to_resume:
+            messagebox.showerror("Lỗi", "Vui lòng chọn sản phẩm để kinh doanh lại.")
+            return
+
+        if messagebox.askyesno("Xác nhận", f"Bạn có chắc chắn muốn 'Kinh doanh lại' sản phẩm Mã SP {sku_to_resume}?"):
+            # Gọi hàm CSDL để cập nhật trạng thái
+            success, message = resumeProduct(sku_to_resume)
+            if success:
+                messagebox.showinfo("Thành công", message)
+                self.load_products()
+                # Cập nhật ngay trạng thái hiển thị trên POSPage
+                if hasattr(self, 'pos_view'):
+                    self.pos_view.load_products_list()
+                
+                self.clear_entries()
+            else:
+                messagebox.showerror("Lỗi", message)
+
+    def discontinue_product_action(self):
+        """Xử lý hành động "Ngừng Kinh Doanh" (set isActive = 0)."""
+        sku_to_discontinue = self.entries['sku'].get().strip()
+        if not sku_to_discontinue:
+            messagebox.showerror("Lỗi", "Vui lòng chọn sản phẩm để ngừng kinh doanh.")
+            return
+
+        if messagebox.askyesno("Xác nhận", f"Bạn có chắc chắn muốn 'Ngừng Kinh Doanh' sản phẩm Mã SP {sku_to_discontinue}?"):
+            # Gọi hàm CSDL để cập nhật trạng thái
+            success, message = discontinueProduct(sku_to_discontinue)
+            if success:
+                messagebox.showinfo("Thành công", message)
+                self.load_products()
+                self.clear_entries()
+                # Cập nhật ngay trạng thái hiển thị trên POSPage
+                if hasattr(self, 'pos_view'):
+                    self.pos_view.load_products_list()
+            else:
+                messagebox.showerror("Lỗi", message)

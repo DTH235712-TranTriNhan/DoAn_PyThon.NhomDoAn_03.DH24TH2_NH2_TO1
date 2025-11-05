@@ -8,9 +8,10 @@ from Database.dbOrders import createOrder, format_currency
 
 class POSPage(tk.Frame):
     """Giao diện Điểm Bán Hàng (Point of Sale) chính."""
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, is_admin_preview=False):
         tk.Frame.__init__(self, parent)
         self.controller = controller
+        self.is_admin_preview = is_admin_preview
 
         # --- DỮ LIỆU VÀ TRẠNG THÁI ---
         self.current_user = None         # Thông tin user đã đăng nhập: {'id', 'username', 'role'}
@@ -37,20 +38,25 @@ class POSPage(tk.Frame):
         # Tải dữ liệu khi khởi tạo
         self.load_products_list()
 
+        # Nếu đang là chế độ Admin Preview, ẩn/hủy các phần liên quan đến đăng nhập
+        if self.is_admin_preview:
+            if hasattr(self, 'auth_frame'):
+                 self.auth_frame.pack_forget()
+
     # ----------------------------------------------------------------------
     # --- PHẦN KHỞI TẠO GIAO DIỆN CON ---
     # ----------------------------------------------------------------------
 
     def create_user_status_frame(self):
         """Khởi tạo khung trạng thái người dùng (Đăng nhập/Đăng xuất)."""
-        status_frame = tk.Frame(self, relief=tk.RAISED, bd=1) 
-        status_frame.pack(fill='x', padx=10, pady=5)
+        self.auth_frame = tk.Frame(self, relief=tk.RAISED, bd=1)
+        self.auth_frame.pack(fill='x', padx=10, pady=5)
 
-        self.user_label = tk.Label(status_frame, text="Chưa đăng nhập", fg="red")
+        self.user_label = tk.Label(self.auth_frame, text="Chưa đăng nhập", fg="red")
         self.user_label.pack(side=tk.LEFT, padx=10)
 
-        self.login_button = tk.Button(status_frame, text="Đăng nhập",bg="red", 
-                  fg="white", command=self.show_login_dialog)
+        self.login_button = tk.Button(self.auth_frame, text="Đăng nhập",bg="red",
+                    fg="white", command=self.show_login_dialog)
         self.login_button.pack(side=tk.RIGHT, padx=10)
 
     def create_product_list_frame(self, parent_window):
@@ -139,13 +145,21 @@ class POSPage(tk.Frame):
             if product_data:
                 quantity = product_data.get('quantity', 0) 
                 original_name = product_data['name']
+                is_active = product_data.get('isActive', 0)
                 
                 # Cập nhật trạng thái tồn kho
+                if is_active == 0:
+                    # Ngừng kinh doanh
+                    display_name = f"{original_name} (NGỪNG KINH DOANH)"
+                    self.name_label.config(text=display_name, fg="darkred") 
+                    self.selected_product_is_available = False
                 if quantity <= 0:
+                    # Hết hàng
                     display_name = f"{original_name} (HẾT HÀNG)"
                     self.name_label.config(text=display_name, fg="red") 
                     self.selected_product_is_available = False
                 else:
+                    # Sẵn hàng
                     display_name = original_name
                     self.name_label.config(text=display_name, fg="black") 
                     self.selected_product_is_available = True
@@ -256,13 +270,23 @@ class POSPage(tk.Frame):
 
         name = product_data['name']
         price = product_data['price'] # Giá trị số
+        is_active = product_data.get('isActive', 0) # Giả định: 1=Active, 0=Discontinued
+        current_available_stock = product_data.get('quantity', 0)
+
+        if is_active == 0:
+            messagebox.showerror("Lỗi Giao dịch", f"Sản phẩm '{name}' đã **ngừng kinh doanh** và không thể thêm vào giỏ.")
+            return
         
+        if current_available_stock <= 0:
+            messagebox.showerror("Lỗi Tồn kho", f"Sản phẩm '{name}' đã **hết hàng**.")
+            return
+
         if selected_sku in self.cart_items:
             # Tăng số lượng & kiểm tra giới hạn tồn kho
-            current_available_stock = product_data['quantity']
-            if self.cart_items[selected_sku]['quantity'] >= current_available_stock:
-                 messagebox.showwarning("Lỗi tồn kho", f"Đã đạt giới hạn tồn kho ({current_available_stock}).")
-                 return
+            current_cart_quantity = self.cart_items[selected_sku]['quantity']
+            if current_cart_quantity >= current_available_stock:
+                messagebox.showwarning("Lỗi tồn kho", f"Đã đạt giới hạn tồn kho ({current_available_stock}).")
+                return
                  
             self.cart_items[selected_sku]['quantity'] += 1
             message = f"Đã tăng SL '{name}' lên {self.cart_items[selected_sku]['quantity']}."

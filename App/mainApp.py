@@ -2,8 +2,8 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from App.Views.loginPage import LoginPage 
 from App.Views.registerPage import RegisterPage
-from App.Views.adminPage import AdminPage   # Cần tạo file này
-from App.Views.posPage import POSPage       # Cần tạo file này
+from App.Views.adminPage import AdminPage
+from App.Views.posPage import POSPage
 
 class SalesApp(tk.Tk):
     def __init__(self):
