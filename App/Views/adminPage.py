@@ -292,9 +292,15 @@ class AdminPage(tk.Frame):
             if success:
                 messagebox.showinfo("Thành công", message)
                 self.load_products()
-                # Tải lại danh sách sản phẩm cho trang POS (nếu POSPage đã tồn tại)
+
+                if hasattr(self, 'pos_view'):
+                    self.pos_view.load_products_list()
+
                 if "POSPage" in self.controller.frames:
-                    self.controller.frames["POSPage"].load_products_list()
+                    pos_page_instance = self.controller.frames["POSPage"]
+                    pos_page_instance.load_products_list()
+                    
+                self.clear_entries()
             else:
                 messagebox.showerror("Lỗi", message)
 
@@ -322,11 +328,16 @@ class AdminPage(tk.Frame):
         if messagebox.askyesno("Xác nhận", f"Bạn có chắc chắn muốn XÓA VĨNH VIỄN sản phẩm Mã SP {sku_to_delete}? (Không thể khôi phục)"):
            success, message = removeProductPermanently(sku_to_delete)
            if success:
-               messagebox.showinfo("Thành công", message)
-               self.load_products()
-               # Làm mới POSPage nếu có
-               if "POSPage" in self.controller.frames:
-                   self.controller.frames["POSPage"].load_products_list()
+                messagebox.showinfo("Thành công", message)
+                self.load_products()
+                self.clear_entries()
+                # Làm mới POSPage nếu có
+                if hasattr(self, 'pos_view'):
+                    self.pos_view.load_products_list()
+
+                if "POSPage" in self.controller.frames:
+                    pos_page_instance = self.controller.frames["POSPage"]
+                    pos_page_instance.load_products_list()
            else:
                messagebox.showerror("Lỗi", message)
 
@@ -343,9 +354,14 @@ class AdminPage(tk.Frame):
             if success:
                 messagebox.showinfo("Thành công", message)
                 self.load_products()
+                self.clear_entries()
                 # Tải lại danh sách sản phẩm cho trang POS
+                if hasattr(self, 'pos_view'):
+                    self.pos_view.load_products_list()
+
                 if "POSPage" in self.controller.frames:
-                    self.controller.frames["POSPage"].load_products_list()
+                    pos_page_instance = self.controller.frames["POSPage"]
+                    pos_page_instance.load_products_list()
             else:
                 messagebox.showerror("Lỗi", message)
 
@@ -483,7 +499,9 @@ class AdminPage(tk.Frame):
                 # Cập nhật ngay trạng thái hiển thị trên POSPage
                 if hasattr(self, 'pos_view'):
                     self.pos_view.load_products_list()
-                
+                if "POSPage" in self.controller.frames:
+                    pos_page_instance = self.controller.frames["POSPage"]
+                    pos_page_instance.load_products_list()
                 self.clear_entries()
             else:
                 messagebox.showerror("Lỗi", message)

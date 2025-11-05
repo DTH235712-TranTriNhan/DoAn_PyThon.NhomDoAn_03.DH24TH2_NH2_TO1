@@ -31,6 +31,8 @@ class SalesApp(tk.Tk):
         '''Hiển thị frame được chỉ định'''
         frame = self.frames[page_name]
         frame.tkraise()
+        if hasattr(frame, "on_show"):
+            frame.on_show()
 
 if __name__ == "__main__":
     app = SalesApp()

@@ -131,7 +131,15 @@ class POSPage(tk.Frame):
         products = getProductsForPOS()
         for product in products:
             sku, name, _, price_str, *_ = product
-            self.tree.insert('', tk.END, values=(sku, name, price_str), iid=sku) 
+            self.tree.insert('', tk.END, values=(sku, name, price_str), iid=sku)
+
+    def on_show(self):
+        """
+        Phương thức được Controller gọi khi Frame này được hiển thị (tkraise).
+        Buộc tải lại danh sách sản phẩm để cập nhật trạng thái sau khi Admin thay đổi.
+        """
+        self.load_products_list() 
+        self.clear_detail_view()
 
     def display_product_detail(self, event):
         """Lấy và hiển thị chi tiết sản phẩm khi chọn trên Treeview."""
