@@ -50,7 +50,7 @@ CREATE TABLE Products (
     stockQuantity INT NOT NULL DEFAULT 0,
     ImagePath NVARCHAR(MAX),
     Description NVARCHAR(MAX),
-    isActive BIT NOT NULL DEFAULT 1;
+    isActive BIT NOT NULL DEFAULT 1
 );
 ```
 3. Bảng Orders (Đơn hàng/Hóa đơn)
