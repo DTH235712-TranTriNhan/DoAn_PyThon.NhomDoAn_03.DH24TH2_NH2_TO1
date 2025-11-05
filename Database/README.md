@@ -49,7 +49,8 @@ CREATE TABLE Products (
     price DECIMAL(18, 0) NOT NULL,
     stockQuantity INT NOT NULL DEFAULT 0,
     ImagePath NVARCHAR(MAX),
-    Description NVARCHAR(MAX)
+    Description NVARCHAR(MAX),
+    isActive BIT NOT NULL DEFAULT 1;
 );
 ```
 3. Bảng Orders (Đơn hàng/Hóa đơn)

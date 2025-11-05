@@ -36,25 +36,47 @@ def _format_product_row(row):
         description if description else ''
     )
 
-def getAllProducts():
-    """Lấy tất cả sản phẩm (bao gồm cả hàng hết kho) với định dạng giá."""
+def getAllProductsForAdmin():
+    """
+    Lấy TẤT CẢ sản phẩm (kể cả đã Ngừng kinh doanh) để hiển thị trên Admin Page, 
+    bao gồm cả trạng thái isActive. Trả về danh sách dictionary.
+    """
     conn = getDbConnection()
     if not conn: return []
     cursor = conn.cursor()
     products = []
     
     try:
-        query = "SELECT SKU, name, category, price, stockQuantity, ImagePath, Description FROM Products"
+        query = "SELECT SKU, name, category, price, stockQuantity, ImagePath, Description, isActive FROM Products"
         cursor.execute(query)
         rows = cursor.fetchall()
         
         for row in rows:
-            formatted_product = _format_product_row(row)
-            if formatted_product:
-                products.append(formatted_product)
+            # 1. Định dạng giá 
+            price = row[3]
+            try:
+                price_str = f"{float(price):,.0f}"
+            except:
+                price_str = str(price)
+            
+            # 2. Xử lý trạng thái
+            is_active_int = int(row[7])
+            status_text = "Đang kinh doanh" if is_active_int == 1 else "Ngừng kinh doanh"
+            
+            products.append({
+                'SKU': row[0],
+                'name': row[1].strip("'") if isinstance(row[1], str) else row[1],
+                'category': row[2].strip("'") if isinstance(row[2], str) else row[2],
+                'price': price_str,
+                'stock': row[4],
+                'imagePath': row[5] if row[5] else '',
+                'description': row[6] if row[6] else '',
+                'isActive': is_active_int,
+                'status_text': status_text
+            })
             
     except Exception as e:
-        print(f"Lỗi khi tải tất cả sản phẩm: {e}")
+        print(f"Lỗi khi tải tất cả sản phẩm cho Admin: {e}")
     finally:
         if conn:
             conn.close()
@@ -62,7 +84,10 @@ def getAllProducts():
     return products
 
 def getProductsForPOS():
-    """Lấy tất cả sản phẩm (kể cả hết hàng) để hiển thị bên POSPage."""
+    """
+    Lấy tất cả sản phẩm đang hoạt động (isActive = 1) để hiển thị bên POSPage.
+    Sản phẩm hết hàng (stock=0) vẫn được hiển thị.
+    """
     conn = getDbConnection()
     if not conn: return []
     cursor = conn.cursor()
@@ -70,7 +95,7 @@ def getProductsForPOS():
     
     try:
         # LỌC: Chỉ lấy sản phẩm có stockQuantity > 0
-        query = "SELECT SKU, name, category, price, stockQuantity, ImagePath, Description FROM Products"
+        query = "SELECT SKU, name, category, price, stockQuantity, ImagePath, Description FROM Products WHERE isActive = 1"
         cursor.execute(query)
         rows = cursor.fetchall()
         
@@ -101,7 +126,7 @@ def getProductDetailBySku(sku):
     
     try:
         query = """
-        SELECT SKU, name, category, price, stockQuantity, ImagePath, Description 
+        SELECT SKU, name, category, price, stockQuantity, ImagePath, Description, isActive 
         FROM Products 
         WHERE SKU = ?
         """
@@ -111,6 +136,7 @@ def getProductDetailBySku(sku):
         if row:
             price = row[3]
             stock_quantity = int(row[4])
+            is_active = int(row[7])
             
             # Định dạng giá cho hiển thị chi tiết
             try:
@@ -126,7 +152,8 @@ def getProductDetailBySku(sku):
                 "price_str": price_str, # Giá trị chuỗi đã định dạng
                 "quantity": stock_quantity,
                 "imagePath": row[5] if row[5] else None,
-                "description": row[6] if row[6] else "Không có mô tả chi tiết."
+                "description": row[6] if row[6] else "Không có mô tả chi tiết.",
+                "isActive": is_active
             }
         return None
         
@@ -235,41 +262,81 @@ def updateProduct(sku, name, category, price, stock, imagePath=None, description
         if conn:
             conn.close()
 
-def deleteProduct(sku):
-    """'Xóa' sản phẩm bằng cách set tồn kho về 0."""
+def discontinueProduct(sku):
+    """
+    'Ngừng kinh doanh' sản phẩm bằng cách set isActive = 0.
+    """
     conn = getDbConnection()
-    if not conn: return False
+    if not conn: return False, "Lỗi kết nối CSDL."
         
     try:
         cursor = conn.cursor()
-        query = "UPDATE Products SET stockQuantity = 0 WHERE SKU = ?" 
+        # Set isActive = 0
+        query = "UPDATE Products SET isActive = 0 WHERE SKU = ?" 
         cursor.execute(query, (sku,))
         conn.commit()
         
-        return cursor.rowcount > 0 # True nếu có ít nhất 1 dòng bị ảnh hưởng
+        if cursor.rowcount > 0:
+            return True, f"Sản phẩm {sku} đã ngừng kinh doanh thành công."
+        else:
+            return False, f"Không tìm thấy sản phẩm có Mã: {sku}."
             
     except Exception as e:
-        print(f"Lỗi 'xóa' sản phẩm (set stock=0): {e}")
-        return False
+        print(f"Lỗi khi Ngừng kinh doanh sản phẩm: {e}")
+        return False, f"Lỗi CSDL: {e}"
     finally:
         if conn:
             conn.close()
 
 def removeProductPermanently(sku):
-    """Xóa sản phẩm khỏi cơ sở dữ liệu (xóa hoàn toàn)."""
+    """
+    Xóa sản phẩm khỏi CSDL (xóa hoàn toàn) CHỈ KHI isActive = 0.
+    Xử lý lỗi Khóa ngoại bằng cách xóa OrderItems liên quan trước.
+    """
     conn = getDbConnection()
     if not conn: 
         return False, "Không thể kết nối CSDL."
+    cursor = conn.cursor()
+    
     try:
-        cursor = conn.cursor()
+        # 1. KIỂM TRA TRẠNG THÁI KINH DOANH (isActive) TRƯỚC KHI XÓA
+        cursor.execute("SELECT isActive FROM Products WHERE SKU = ?", (sku,))
+        result = cursor.fetchone()
+        
+        if not result:
+            return False, f"Không tìm thấy sản phẩm có Mã SP {sku}."
+            
+        is_active = int(result[0])
+        
+        # CHỈ CHO PHÉP XÓA KHI isActive = 0
+        if is_active == 1:
+            return False, f"Không thể xóa vĩnh viễn. Sản phẩm này đang hoạt động. Vui lòng sử dụng nút 'Xóa' (Dừng kinh doanh) trước."
+
+        # 2. XÓA BẢN GHI LIÊN QUAN TRONG BẢNG ORDERITEMS (Xóa Thác)
+        cursor.execute("DELETE FROM OrderItems WHERE SKU = ?", (sku,))
+        rows_deleted_orderitems = cursor.rowcount 
+
+        # 3. XÓA SẢN PHẨM KHỎI BẢNG PRODUCTS
         cursor.execute("DELETE FROM Products WHERE SKU = ?", (sku,))
+        rows_deleted_products = cursor.rowcount
+
         conn.commit()
-        return True, f"Đã xóa vĩnh viễn sản phẩm {sku}."
+        
+        if rows_deleted_products > 0:
+            msg = f"Đã xóa vĩnh viễn sản phẩm {sku} thành công."
+            if rows_deleted_orderitems > 0:
+                msg += f" (Đồng thời xóa {rows_deleted_orderitems} mục lịch sử đơn hàng liên quan)."
+            return True, msg
+        else:
+            return False, f"Không tìm thấy sản phẩm có Mã SP {sku} để xóa."
+
     except Exception as e:
         conn.rollback()
-        return False, f"Lỗi khi xóa sản phẩm: {e}"
+        print(f"LỖI CSDL KHI XÓA VĨNH VIỄN: {e}")
+        return False, f"Lỗi CSDL khi xóa vĩnh viễn: {e}"
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 def searchProducts(keyword):
     """Tìm kiếm sản phẩm theo Tên (name) hoặc Mã SP (SKU) và trả về danh sách định dạng."""
@@ -346,6 +413,32 @@ def updateStockQuantity(sku, quantity_change):
     except Exception as e:
         conn.rollback()
         print(f"Lỗi khi cập nhật tồn kho: {e}")
+        return False, f"Lỗi CSDL: {e}"
+    finally:
+        if conn:
+            conn.close()
+
+def resumeProduct(sku):
+    """
+    'Kinh doanh lại' sản phẩm bằng cách set isActive = 1.
+    """
+    conn = getDbConnection()
+    if not conn: return False, "Lỗi kết nối CSDL."
+        
+    try:
+        cursor = conn.cursor()
+        # Set isActive = 1
+        query = "UPDATE Products SET isActive = 1 WHERE SKU = ?" 
+        cursor.execute(query, (sku,))
+        conn.commit()
+        
+        if cursor.rowcount > 0:
+             return True, f"Đã kích hoạt kinh doanh lại sản phẩm {sku}."
+        else:
+             return False, f"Không tìm thấy sản phẩm {sku} để kích hoạt."
+            
+    except Exception as e:
+        print(f"Lỗi khi Kinh doanh lại sản phẩm: {e}")
         return False, f"Lỗi CSDL: {e}"
     finally:
         if conn:
