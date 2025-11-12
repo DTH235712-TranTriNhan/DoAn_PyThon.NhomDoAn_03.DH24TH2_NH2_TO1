@@ -94,7 +94,7 @@ def getProductsForPOS():
     products = []
     
     try:
-        # LỌC: Chỉ lấy sản phẩm có stockQuantity > 0
+        # LỌC: Chỉ lấy sản phẩm có isActive = 1
         query = "SELECT SKU, name, category, price, stockQuantity, ImagePath, Description FROM Products WHERE isActive = 1"
         cursor.execute(query)
         rows = cursor.fetchall()
@@ -102,13 +102,24 @@ def getProductsForPOS():
         for row in rows:
             # Định dạng giá riêng cho POS (thêm VNĐ)
             price = row[3]
+            price_float = 0 # Khởi tạo giá trị mặc định cho price_float
             try:
-                price_str = f"{float(price):,.0f} VNĐ"
+                price_float = float(price) # Giá trị số
+                price_str = f"{price_float:,.0f} VNĐ"
             except:
-                price_str = str(price)
+                price_str = str(price) + " (Lỗi Giá)" # Giá trị chuỗi báo lỗi nếu cần
             
             # Trả về 7 trường dữ liệu
-            products.append((row[0], row[1], row[2], price_str, row[4], row[5], row[6])) 
+            products.append({
+                'sku': row[0],
+                'name': row[1].strip("'") if isinstance(row[1], str) else row[1],
+                'category': row[2].strip("'") if isinstance(row[2], str) else row[2],
+                'price_str': price_str,            # Dùng để hiển thị
+                'price': price_float,              # Dùng để tính giỏ hàng (sử dụng 0 nếu lỗi)
+                'stock': int(row[4]),
+                'imagePath': row[5] if row[5] else '', # Lấy đúng index 5 (ImagePath)
+                'description': row[6] if row[6] else ''
+            })
             
     except Exception as e:
         print(f"Lỗi khi tải sản phẩm POS: {e}")

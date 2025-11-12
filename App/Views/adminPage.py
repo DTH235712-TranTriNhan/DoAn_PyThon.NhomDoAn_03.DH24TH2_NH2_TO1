@@ -126,7 +126,7 @@ class AdminPage(tk.Frame):
         self.order_tree.bind("<Double-1>", self.show_order_details)
 
         # ---------------------- TAB 3: XEM SẢN PHẨM POS ----------------------
-        self.pos_view = POSPage(parent=pos_view_tab, controller=controller, is_admin_preview=True) 
+        self.pos_view = POSPage(parent=pos_view_tab, controller=controller)
         self.pos_view.pack(fill="both", expand=True)
 
 # ======================================================================
