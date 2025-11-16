@@ -887,3 +887,11 @@ class POSPage(tk.Frame):
             self.v_scroll.pack(side="right", fill="y")
             # Cần đảm bảo canvas và scrollbar được bố trí đúng trong container cha
             # (Giả định bạn đã dùng grid/pack cho self.canvas và self.v_scroll trong create_product_grid)
+
+
+    def on_show_frame(self):
+        """Hàm này sẽ được controller gọi khi trang này được hiển thị."""
+        # Đặt kích thước cửa sổ mong muốn (Rộng x Cao)
+        # Bạn có thể thử nghiệm các giá trị này, ví dụ: 450x550 hoặc 400x500
+        self.controller.geometry("550x550")  # Mở rộng cửa sổ tối đa
+       

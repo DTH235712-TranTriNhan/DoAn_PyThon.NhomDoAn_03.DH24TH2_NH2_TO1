@@ -9,7 +9,8 @@ from Database.dbOrders import getAllOrdersForAdmin, getAllOrders, getOrderDetail
 
 class AdminPage(tk.Frame):
     def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
+        # 1. --- THIẾT LẬP NỀN CHÍNH ---
+        tk.Frame.__init__(self, parent, bg="#FFF8F0") 
         self.controller = controller
 
         # --- BIẾN ĐỂ GIỮ THAM CHIẾU ẢNH ---
@@ -17,26 +18,80 @@ class AdminPage(tk.Frame):
         self.categories = ["Điện tử", "Phụ kiện", "Đồ gia dụng", "Thời trang", "Khác"]
         self.entries = {}
         
-        # === Notebook (2 tab) ===
-        notebook = ttk.Notebook(self)
-        notebook.pack(fill='both', expand=True)
+        # 2. --- THIẾT LẬP STYLE CHO TTK (Notebook, Treeview) ---
+        self.style = ttk.Style(self)
+        self.style.theme_use('default') # Đảm bảo dùng theme 'default' để custom
 
-        product_tab = tk.Frame(notebook)
-        order_tab = tk.Frame(notebook)
-        pos_view_tab = tk.Frame(notebook)
+        # Style cho Notebook (Tabs)
+        self.style.configure("Admin.TNotebook", background="#FFF8F0") # Nền chung của notebook
+        self.style.configure("Admin.TNotebook.Tab", 
+                             background="#A52A2A",     # Nền tab (chưa chọn)
+                             foreground="white",       # Chữ tab (chưa chọn)
+                             font=("Times New Roman", 11, "bold"), 
+                             padding=[10, 5],
+                             relief="flat")
+        self.style.map("Admin.TNotebook.Tab",
+                       background=[("selected", "#8B0000")],  # Nền tab (ĐÃ CHỌN)
+                       foreground=[("selected", "white")])    # Chữ tab (ĐÃ CHỌN)
+        
+        # Style cho Frame bên trong Tab (nơi chứa nội dung)
+        self.style.configure("Admin.TFrame", background="#FFF8F0")
+
+        # Style cho Treeview (Bảng)
+        self.style.configure("Admin.Treeview", 
+                             background="#FFFFFF",        # Nền các dòng
+                             fieldbackground="#FFFFFF",   # Nền các ô
+                             foreground="#5C2E0C",        # Màu chữ
+                             font=("Times New Roman", 10),
+                             rowheight=25)                # Tăng chiều cao dòng
+        self.style.configure("Admin.Treeview.Heading", 
+                             background="#8B0000",        # Nền tiêu đề cột
+                             foreground="white",          # Chữ tiêu đề cột
+                             font=("Times New Roman", 11, "bold"),
+                             relief="flat")
+        self.style.map("Admin.Treeview.Heading", 
+                       background=[('active', '#A52A2A')]) # Hover
+        # --------------------------------------------------------
+
+        # === Notebook (2 tab) ===
+        notebook = ttk.Notebook(self, style="Admin.TNotebook") # Áp dụng style
+        notebook.pack(fill='both', expand=True, padx=10, pady=10)
+
+        # 3. --- THIẾT LẬP NỀN CHO CÁC TAB FRAME ---
+        product_tab = tk.Frame(notebook, bg="#FFF8F0")
+        order_tab = tk.Frame(notebook, bg="#FFF8F0")
+        pos_view_tab = tk.Frame(notebook, bg="#FFF8F0")
+        
+        # Gán style cho Frame nội dung của tab
         notebook.add(product_tab, text="Quản lý sản phẩm")
         notebook.add(order_tab, text="Quản lý đơn hàng")
         notebook.add(pos_view_tab, text="Xem sản phẩm POS")
 
         # ---------------------- TAB 1: QUẢN LÝ SẢN PHẨM ----------------------
-        header_frame = tk.Frame(product_tab)
+        header_frame = tk.Frame(product_tab, bg="#FFF8F0")
         header_frame.pack(fill='x', pady=10)
 
-        tk.Label(header_frame, text="QUẢN LÝ SẢN PHẨM", font=("Times New Roman", 20, "bold"),fg="red").pack(side=tk.LEFT, padx=10)
-        tk.Button(header_frame, text="Đăng xuất",bg="red", 
-                  fg="white", command=lambda: controller.show_frame("LoginPage")).pack(side=tk.RIGHT, padx=10)
+        tk.Label(
+            header_frame, text="🍇 QUẢN LÝ SẢN PHẨM", 
+            font=("Times New Roman", 20, "bold"), 
+            fg="#8B0000", bg="#FFF8F0"
+        ).pack(side=tk.LEFT, padx=10)
+        
+        tk.Button(
+            header_frame, text="Đăng xuất", 
+            bg="#E53935", fg="white", 
+            font=("Times New Roman", 12, "bold"), 
+            relief="flat",
+            command=lambda: controller.show_frame("LoginPage")
+        ).pack(side=tk.RIGHT, padx=10, pady=5)
 
-        input_frame = tk.LabelFrame(product_tab, text="Thông tin Sản phẩm", padx=10, pady=10)
+        input_frame = tk.LabelFrame(
+            product_tab, text="Thông tin Sản phẩm", 
+            padx=10, pady=10, 
+            bg="#FFF8F0", fg="#5C2E0C", 
+            font=("Times New Roman", 12, "bold"), 
+            relief="solid", bd=1
+        )
         input_frame.pack(fill='x', padx=10)
 
         labels = ["Mã Sản Phẩm ", "Tên Sản Phẩm", "Danh mục", "Giá", "Tồn kho", "Đường dẫn Ảnh", "Mô tả"]
@@ -49,83 +104,178 @@ class AdminPage(tk.Frame):
             label_text = labels[keys.index(key)]
             r = i // 3
             c = (i % 3) * 2
-            tk.Label(input_frame, text=label_text + ":", anchor='w').grid(row=r, column=c, padx=5, pady=5, sticky='w')
+            tk.Label(
+                input_frame, text=label_text + ":", anchor='w', 
+                bg="#FFF8F0", fg="#5C2E0C", font=("Times New Roman", 11)
+            ).grid(row=r, column=c, padx=5, pady=5, sticky='w')
 
             if key == "category":
-                entry = ttk.Combobox(input_frame, width=20, values=self.categories)
+                # ttk.Combobox sẽ tuân theo style của hệ thống/theme
+                entry = ttk.Combobox(input_frame, width=20, values=self.categories, font=("Times New Roman", 11))
                 entry.set(self.categories[0])
             else:
-                entry = tk.Entry(input_frame, width=20)
+                entry = tk.Entry(input_frame, width=20, font=("Times New Roman", 11), relief="solid", bd=1)
 
             entry.grid(row=r, column=c + 1, padx=5, pady=5, sticky='ew')
             self.entries[key] = entry
 
         key = "imagePath"
         label_text = labels[keys.index(key)]
-        tk.Label(input_frame, text=label_text + ":", anchor='w').grid(row=2, column=0, padx=5, pady=5, sticky='w')
-        entry = tk.Entry(input_frame, width=60)
+        tk.Label(
+            input_frame, text=label_text + ":", anchor='w', 
+            bg="#FFF8F0", fg="#5C2E0C", font=("Times New Roman", 11)
+        ).grid(row=2, column=0, padx=5, pady=5, sticky='w')
+        
+        entry = tk.Entry(input_frame, width=60, font=("Times New Roman", 11), relief="solid", bd=1)
         entry.grid(row=2, column=1, padx=5, pady=5, columnspan=3, sticky='ew')
         self.entries[key] = entry
-        tk.Button(input_frame, text="Chọn ảnh...", command=self.browseImage, width=10).grid(row=2, column=4, padx=5, pady=5, sticky='w')
+        
+        tk.Button(
+            input_frame, text="Chọn ảnh...", 
+            command=self.browseImage, width=10,
+            bg="#A52A2A", fg="white", 
+            font=("Times New Roman", 10, "bold"), 
+            relief="flat"
+        ).grid(row=2, column=4, padx=5, pady=5, sticky='w')
 
-        self.image_preview_label = tk.Label(input_frame, text="Ảnh Xem trước",
-                                            width=20, height=10, relief="sunken", bg="lightgray")
+        self.image_preview_label = tk.Label(
+            input_frame, text="Ảnh Xem trước",
+            width=20, height=10, relief="solid", bg="#FFF0E6", bd=1
+        )
         self.image_preview_label.grid(row=2, column=5, rowspan=2, padx=10, pady=5, sticky='nsew')
 
         key = "description"
         label_text = labels[keys.index(key)]
-        tk.Label(input_frame, text=label_text + ":", anchor='w').grid(row=3, column=0, padx=5, pady=5, sticky='w')
-        entry = tk.Entry(input_frame, width=80)
+        tk.Label(
+            input_frame, text=label_text + ":", anchor='w', 
+            bg="#FFF8F0", fg="#5C2E0C", font=("Times New Roman", 11)
+        ).grid(row=3, column=0, padx=5, pady=5, sticky='w')
+        
+        entry = tk.Entry(input_frame, width=80, font=("Times New Roman", 11), relief="solid", bd=1)
         entry.grid(row=3, column=1, padx=5, pady=5, columnspan=4, sticky='ew')
         self.entries[key] = entry
 
-        button_frame = tk.Frame(input_frame)
+        # --- Button Frame Styling ---
+        button_frame = tk.Frame(input_frame, bg="#FFF8F0")
         button_frame.grid(row=4, column=0, columnspan=5, pady=10)
-        tk.Button(button_frame, text="Thêm", command=self.add_product_action, width=10).pack(side=tk.LEFT, padx=10)
-        tk.Button(button_frame, text="Sửa", command=self.update_product_action, width=10).pack(side=tk.LEFT, padx=10)
-        tk.Button(button_frame, text="Ngừng Kinh Doanh", command=self.discontinue_product_action, width=15, bg="#f0ad4e", fg="white").pack(side=tk.LEFT, padx=10)
-        tk.Button(button_frame, text="Kinh doanh lại", command=self.resume_product_action, width=15, bg="#5cb85c", fg="white").pack(side=tk.LEFT, padx=10)
-        tk.Button(button_frame, text="Xóa vĩnh viễn", command=self.remove_product_action, width=15, bg="#d9534f", fg="white").pack(side=tk.LEFT, padx=10)
-        tk.Button(button_frame, text="Làm mới", command=self.load_products, width=10).pack(side=tk.LEFT, padx=10)
+        
+        btn_font = ("Times New Roman", 12, "bold")
+        
+        tk.Button(
+            button_frame, text="Thêm", command=self.add_product_action, width=10,
+            bg="#A52A2A", fg="white", font=btn_font, relief="flat"
+        ).pack(side=tk.LEFT, padx=10)
+        
+        tk.Button(
+            button_frame, text="Sửa", command=self.update_product_action, width=10,
+            bg="#A52A2A", fg="white", font=btn_font, relief="flat"
+        ).pack(side=tk.LEFT, padx=10)
+        
+        tk.Button(
+            button_frame, text="Ngừng Kinh Doanh", command=self.discontinue_product_action, width=15, 
+            bg="#f0ad4e", fg="white", font=btn_font, relief="flat"
+        ).pack(side=tk.LEFT, padx=10)
+        
+        tk.Button(
+            button_frame, text="Kinh doanh lại", command=self.resume_product_action, width=15, 
+            bg="#4CAF50", fg="white", font=btn_font, relief="flat"
+        ).pack(side=tk.LEFT, padx=10)
+        
+        tk.Button(
+            button_frame, text="Xóa vĩnh viễn", command=self.remove_product_action, width=15, 
+            bg="#E53935", fg="white", font=btn_font, relief="flat"
+        ).pack(side=tk.LEFT, padx=10)
+        
+        tk.Button(
+            button_frame, text="Làm mới", command=self.load_products, width=10,
+            font=btn_font, relief="flat" # Nút trung tính
+        ).pack(side=tk.LEFT, padx=10)
 
-        search_frame = tk.Frame(product_tab, padx=10, pady=5)
+        # --- Search Frame Styling ---
+        search_frame = tk.Frame(product_tab, padx=10, pady=5, bg="#FFF8F0")
         search_frame.pack(fill='x')
-        tk.Label(search_frame, text="Tìm kiếm:", width=15).pack(side=tk.LEFT)
-        self.search_entry = tk.Entry(search_frame)
+        
+        tk.Label(
+            search_frame, text="Tìm kiếm:", width=10, anchor='w',
+            bg="#FFF8F0", fg="#5C2E0C", font=("Times New Roman", 11)
+        ).pack(side=tk.LEFT)
+        
+        self.search_entry = tk.Entry(search_frame, font=("Times New Roman", 11), relief="solid", bd=1)
         self.search_entry.pack(side=tk.LEFT, fill='x', expand=True, padx=5)
-        tk.Button(search_frame, text="Tìm kiếm", command=self.search_product_action, width=10,
-                  bg="red", 
-                  fg="white").pack(side=tk.LEFT)
+        
+        tk.Button(
+            search_frame, text="Tìm kiếm", command=self.search_product_action, width=10,
+            bg="#8B0000", fg="white", font=("Times New Roman", 11, "bold"), relief="flat"
+        ).pack(side=tk.LEFT)
 
+        # --- Treeview (Bảng Sản phẩm) ---
         columns = ("Mã Sản Phẩm", "Tên Sản Phẩm", "Danh mục", "Giá", "Tồn kho", "Đường dẫn Ảnh", "Mô tả", "Trạng thái")
-        self.tree = ttk.Treeview(product_tab, columns=columns, show="headings")
+        self.tree = ttk.Treeview(product_tab, columns=columns, show="headings", style="Admin.Treeview") # Áp dụng style
+        
         for col in columns:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=80, anchor=tk.CENTER)
-        self.tree.column("Tên Sản Phẩm", width=150)
+            
+        self.tree.column("Tên Sản Phẩm", width=150, anchor='w')
         self.tree.column("Đường dẫn Ảnh", width=120)
-        self.tree.column("Mô tả", width=150)
+        self.tree.column("Mô tả", width=150, anchor='w')
         self.tree.column("Trạng thái", width=100, anchor=tk.CENTER)
-        self.tree.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        # Thêm Scrollbar
+        tree_scroll_y = ttk.Scrollbar(product_tab, orient="vertical", command=self.tree.yview)
+        tree_scroll_x = ttk.Scrollbar(product_tab, orient="horizontal", command=self.tree.xview)
+        self.tree.configure(yscrollcommand=tree_scroll_y.set, xscrollcommand=tree_scroll_x.set)
+        
+        tree_scroll_y.pack(side="right", fill="y")
+        self.tree.pack(fill='both', expand=True, padx=10, pady=(0, 0)) # Bỏ pady dưới
+        tree_scroll_x.pack(side="bottom", fill="x", padx=10, pady=(0, 10)) # Thêm scroll x
+
         self.tree.bind("<<TreeviewSelect>>", self.select_item)
         self.load_products()
 
         # ---------------------- TAB 2: QUẢN LÝ ĐƠN HÀNG ----------------------
-        order_frame = tk.LabelFrame(order_tab, text="Danh sách đơn hàng", padx=10, pady=10)
+        order_frame = tk.LabelFrame(
+            order_tab, text="Danh sách đơn hàng", 
+            padx=10, pady=10, 
+            bg="#FFF8F0", fg="#5C2E0C", 
+            font=("Times New Roman", 12, "bold"), 
+            relief="solid", bd=1
+        )
         order_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
         columns = ("Mã ĐH", "Người mua", "Tên đăng nhập", "Ngày đặt", "Sản phẩm", "Số lượng", "Đơn giá", "Tổng tiền", "Trạng thái")
-        self.order_tree = ttk.Treeview(order_frame, columns=columns, show="headings")
+        self.order_tree = ttk.Treeview(order_frame, columns=columns, show="headings", style="Admin.Treeview") # Áp dụng style
 
         for col in columns:
             self.order_tree.heading(col, text=col)
             self.order_tree.column(col, anchor=tk.CENTER, width=110)
+        
+        self.order_tree.column("Người mua", anchor='w')
+        self.order_tree.column("Sản phẩm", anchor='w')
+        self.order_tree.column("Đơn giá", anchor='e')
+        self.order_tree.column("Tổng tiền", anchor='e')
 
+        # Thêm Scrollbar
+        order_scroll_y = ttk.Scrollbar(order_frame, orient="vertical", command=self.order_tree.yview)
+        order_scroll_x = ttk.Scrollbar(order_frame, orient="horizontal", command=self.order_tree.xview)
+        self.order_tree.configure(yscrollcommand=order_scroll_y.set, xscrollcommand=order_scroll_x.set)
+        
+        order_scroll_y.pack(side="right", fill="y")
         self.order_tree.pack(fill='both', expand=True)
-        tk.Button(order_frame, text="Tải lại danh sách", command=self.load_orders_admin).pack(pady=5)
+        order_scroll_x.pack(side="bottom", fill="x")
+        
+        tk.Button(
+            order_frame, text="Tải lại danh sách", 
+            command=self.load_orders_admin,
+            bg="#A52A2A", fg="white", 
+            font=("Times New Roman", 12, "bold"), 
+            relief="flat"
+        ).pack(pady=10)
+        
         self.order_tree.bind("<Double-1>", self.show_order_details)
 
         # ---------------------- TAB 3: XEM SẢN PHẨM POS ----------------------
+        # POSPage đã tự có style riêng, chỉ cần pack vào
         self.pos_view = POSPage(parent=pos_view_tab, controller=controller)
         self.pos_view.pack(fill="both", expand=True)
 
@@ -525,3 +675,9 @@ class AdminPage(tk.Frame):
                     self.pos_view.load_products_list()
             else:
                 messagebox.showerror("Lỗi", message)
+
+    def on_show_frame(self):
+        """Hàm này sẽ được controller gọi khi trang này được hiển thị."""
+        # Đặt kích thước cửa sổ mong muốn (Rộng x Cao)
+        # Bạn có thể thử nghiệm các giá trị này, ví dụ: 450x550 hoặc 400x500
+        self.controller.state('zoomed')
