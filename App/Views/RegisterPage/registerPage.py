@@ -9,16 +9,25 @@ class RegisterPage(tk.Frame):
         tk.Frame.__init__(self, parent, bg="#FFF8F0") 
         self.controller = controller
         
+        # --- (THÊM MỚI): KHUNG CHỨA TRUNG TÂM ---
+        # 1. Tạo một Frame cha để chứa TẤT CẢ mọi thứ
+        main_container = tk.Frame(self, bg="#FFF8F0")
+        
+        # 2. Đặt khung cha này vào GIỮA (expand=True)
+        main_container.pack(expand=True)
+        # ----------------------------------------
+        
         # 2. --- TIÊU ĐỀ ĐỒNG BỘ ---
         tk.Label(
-            self, text="🍇 ĐĂNG KÝ TÀI KHOẢN", 
+            main_container, # <-- (THAY ĐỔI): Parent là main_container
+            text="🍇 ĐĂNG KÝ TÀI KHOẢN", 
             font=("Times New Roman", 24, "bold"), 
             fg="#8B0000",
             bg="#FFF8F0"
         ).pack(pady=20)
         
         # Khung nhập liệu (container chính cho các Label/Entry)
-        fields_frame = tk.Frame(self, bg="#FFF8F0")
+        fields_frame = tk.Frame(main_container, bg="#FFF8F0") # <-- (THAY ĐỔI): Parent là main_container
         fields_frame.pack(pady=10, padx=20) 
 
         self.fields = {}
@@ -32,7 +41,6 @@ class RegisterPage(tk.Frame):
         
         for i, (label_text, key) in enumerate(zip(labels, keys)):
             
-            # Xác định vị trí (Row và Column)
             if i < num_fields / 2: # 3 trường đầu
                 current_row = i
                 label_column = 0
@@ -67,15 +75,14 @@ class RegisterPage(tk.Frame):
                     font=entry_font, relief="solid", bd=1
                 )
                 
-            # GẮN SỰ KIỆN: Kiểm tra duy nhất (Chuyển sang hàm mới)
             if key == "username":
-                entry.bind("<KeyRelease>", self._check_unique_wrapper) # Gọi hàm wrapper
+                entry.bind("<KeyRelease>", self._check_unique_wrapper)
                 
             entry.grid(row=current_row, column=entry_column, padx=(5, 30), pady=10)
             self.fields[key] = entry
             
         # Khung chứa nút
-        buttons_frame = tk.Frame(self, bg="#FFF8F0")
+        buttons_frame = tk.Frame(main_container, bg="#FFF8F0") # <-- (THAY ĐỔI): Parent là main_container
         buttons_frame.pack(pady=20)
 
         # 5. --- NÚT ĐĂNG KÝ ĐỒNG BỘ ---
@@ -83,7 +90,7 @@ class RegisterPage(tk.Frame):
             buttons_frame, 
             text="Đăng ký", 
             font=("Times New Roman", 15, "bold"),
-            command=self._register_wrapper, # Gọi hàm wrapper
+            command=self._register_wrapper, 
             width=20,
             bg="#A52A2A",
             fg="white",
@@ -102,7 +109,6 @@ class RegisterPage(tk.Frame):
             borderwidth=0,
             cursor="hand2"
         ).pack(pady=10)
-
 
     # ----------------------------------------------------------------------
     # --- WRAPPER VÀ EVENT HANDLER (GỌI HÀM LOGIC) ---

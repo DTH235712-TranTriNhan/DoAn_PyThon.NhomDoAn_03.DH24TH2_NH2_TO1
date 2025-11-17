@@ -90,31 +90,15 @@ class POSPage(tk.Frame):
     # ------------------ THANH TÌM KIẾM (MỚI) ------------------
     def create_search_bar(self, parent):
         """Tạo thanh tìm kiếm và nút reset (BÊN TRONG KHUNG CHA)."""
-
-        # Dùng parent được truyền vào, thay vì 'self'
         search_frame = tk.Frame(parent, bg="#FFF8F0", pady=5)
-        # Bỏ padx=20, vì khung cha (right_content_frame) sẽ xử lý
         search_frame.pack(fill="x") 
 
-        self.search_entry = ttk.Entry(
-            search_frame, 
-            font=("Times New Roman", 12),
-            width=40  # <-- "Ngắn lại"
-        )
-        self.search_entry.pack(side="left", fill="x", expand=True, padx=(0, 5), ipady=2)
+        # --- BỐ CỤC: PACK TỪ PHẢI SANG TRÁI ---
 
-        search_btn = tk.Button(
-            search_frame, text="🔍 Tìm", 
-            bg="#A52A2A", fg="white", 
-            font=("Times New Roman", 11, "bold"),
-            relief="flat", cursor="hand2",
-            command=self.perform_search
-        )
-        search_btn.pack(side="left", padx=5)
-
+        # 1. Pack nút "Đặt lại" sang BÊN PHẢI (đầu tiên)
         reset_btn = tk.Button(
             search_frame, text="♻️ Đặt lại", 
-            bg="#757575", fg="white", 
+            bg="#B0BEC5", fg="#263238", # Giữ màu xám cho đẹp
             font=("Times New Roman", 11, "bold"),
             relief="flat", cursor="hand2",
             command=lambda: (
@@ -122,14 +106,33 @@ class POSPage(tk.Frame):
                 self.load_products_list()
             )
         )
-        reset_btn.pack(side="left", padx=5)
+        reset_btn.pack(side="right", padx=(0, 5)) # Đặt padding bên phải
 
-        self.search_entry.bind("<Return>", self.perform_search)
-        reset_btn.pack(side="left", padx=5)
+        # 2. Pack nút "Tìm" sang BÊN PHẢI (thứ hai)
+        search_btn = tk.Button(
+            search_frame, text="🔍 Tìm", 
+            bg="#A52A2A", fg="white", 
+            font=("Times New Roman", 11, "bold"),
+            relief="flat", cursor="hand2",
+            command=self.perform_search
+        )
+        search_btn.pack(side="right", padx=5)
 
-        self.search_entry.bind("<Return>", self.perform_search)
-
-        # Bind phím Enter để tìm kiếm
+        # 3. Pack ô Entry sang BÊN PHẢI (cuối cùng)
+        self.search_entry = ttk.Entry(
+            search_frame, 
+            font=("Times New Roman", 12),
+            width=34  # <-- "Ngắn"
+        )
+        self.search_entry.pack(
+            side="right",  # <-- Pack sang PHẢI
+            fill="none",   # <-- KHÔNG fill
+            expand=False,  # <-- KHÔNG expand
+            padx=(0, 5), 
+            ipady=2
+        )
+        
+        # 4. Bind phím Enter (CHỈ MỘT LẦN)
         self.search_entry.bind("<Return>", self.perform_search)
     
     # ------------------ KHU VỰC TOAST RIÊNG ------------------
@@ -201,7 +204,9 @@ class POSPage(tk.Frame):
 
         # 6. self.grid_frame (Bên trong Canvas)
         self.grid_frame = tk.Frame(self.canvas, bg="#FFF8F0")
-        self.canvas_window = self.canvas.create_window((0, 0), window=self.grid_frame, anchor="nw") 
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.grid_frame, anchor="nw")
+        # --- THÊM MỚI: Thêm 10px đệm xung quanh lưới card ---
+        self.grid_frame.config(padx=10)
 
         # 7. Label "Không có sản phẩm"
         self.no_products_label = tk.Label(
@@ -1039,8 +1044,7 @@ class POSPage(tk.Frame):
        
     def create_category_sidebar(self, parent_frame):
         """Tạo sidebar danh mục bên trong parent_frame."""
-
-        # Thêm padding (20 bên trái, 10 bên phải)
+        
         self.sidebar_frame = tk.Frame(parent_frame, bg="#FFF0E6", width=160, bd=1, relief="solid")
         self.sidebar_frame.pack(side="left", fill="y", padx=(20, 10)) 
         self.sidebar_frame.pack_propagate(False) 
@@ -1057,8 +1061,9 @@ class POSPage(tk.Frame):
         btn_all = tk.Button(
             self.sidebar_frame, text="Tất cả sản phẩm", 
             font=("Times New Roman", 11, "bold"), 
-            relief="flat", anchor="w",
+            relief="flat", 
             bg="#FFF0E6", fg="black"
+            # --- XÓA anchor="w" và padx=10 ---
         )
         btn_all.config(
             command=lambda b=btn_all: (self._set_active_category_button(b), self.load_products_list())
@@ -1073,17 +1078,29 @@ class POSPage(tk.Frame):
                 btn_cat = tk.Button(
                     self.sidebar_frame, text=cat_name, 
                     font=("Times New Roman", 11),
-                    relief="flat", bg="#FFF0E6", anchor="w", fg="black"
+                    relief="flat", 
+                    bg="#FFF0E6", 
+                    fg="black"
+                    # --- XÓA anchor="w" và padx=10 ---
                 )
                 btn_cat.config(
                     command=lambda b=btn_cat, c=cat_name: (self._set_active_category_button(b), self.load_products_by_category(c))
                 )
                 btn_cat.pack(fill="x", padx=5, pady=1)
                 self.category_buttons.append(btn_cat)
+                
+                # Thêm hiệu ứng hover (giữ nguyên)
+                btn_cat.bind("<Enter>", lambda e: e.widget.config(bg="#E0D4CC"))
+                btn_cat.bind("<Leave>", lambda e: self._set_active_category_button())
+                
         except Exception as e:
             print(f"Không thể tải danh mục: {e}")
             tk.Label(self.sidebar_frame, text="(Lỗi tải danh mục)", bg="#FFF0E6").pack()
-
+            
+        # Thêm hiệu ứng hover cho nút "Tất cả" (giữ nguyên)
+        btn_all.bind("<Enter>", lambda e: e.widget.config(bg="#E0D4CC"))
+        btn_all.bind("<Leave>", lambda e: self._set_active_category_button())
+            
         # Đặt nút "Tất cả" làm nút active mặc định
         self._set_active_category_button(btn_all)
 
@@ -1129,28 +1146,35 @@ class POSPage(tk.Frame):
 
     # (Thêm hàm mới này vào bất cứ đâu bên trong Class POSPage)
 
+    # (TRONG POSPage.py)
+# THAY THẾ HÀM NÀY
+
     def _set_active_category_button(self, active_button=None):
         """
         (Hàm trợ giúp mới) Đặt lại màu tất cả các nút danh mục 
         và chỉ highlight nút đang hoạt động.
         """
-        # Định nghĩa màu
-        ACTIVE_BG = "#A52A2A"  # Màu nền khi được chọn (màu đỏ đậm)
-        ACTIVE_FG = "white"    # Màu chữ khi được chọn
-        NORMAL_BG = "#FFF0E6"  # Màu nền bình thường
-        NORMAL_FG = "black"    # Màu chữ bình thường
-
-        # 1. Reset tất cả các nút về bình thường
+        # --- THÊM MỚI: Lưu nút active ---
+        if active_button:
+            self.active_category_button = active_button
+        # --------------------------------
+        
+        ACTIVE_BG = "#A52A2A"
+        ACTIVE_FG = "white"
+        NORMAL_BG = "#FFF0E6"
+        NORMAL_FG = "black"
+        
         for button in self.category_buttons:
             try:
+                # --- THAY ĐỔI LOGIC: ---
+                # Đặt TẤT CẢ về bình thường
                 button.config(bg=NORMAL_BG, fg=NORMAL_FG)
             except tk.TclError:
-                # Nút có thể đã bị hủy, bỏ qua
                 pass
-
-        # 2. Highlight nút được chọn (nếu có)
-        if active_button:
+        
+        # Chỉ highlight nút đang active
+        if hasattr(self, 'active_category_button') and self.active_category_button in self.category_buttons:
             try:
-                active_button.config(bg=ACTIVE_BG, fg=ACTIVE_FG)
+                self.active_category_button.config(bg=ACTIVE_BG, fg=ACTIVE_FG)
             except tk.TclError:
-                pass # Bỏ qua nếu nút không còn tồn tại
+                pass
