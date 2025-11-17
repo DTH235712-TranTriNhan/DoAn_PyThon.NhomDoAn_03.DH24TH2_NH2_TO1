@@ -171,4 +171,4 @@ class RegisterPage(tk.Frame):
         """Hàm này sẽ được controller gọi khi trang này được hiển thị."""
         # Đặt kích thước cửa sổ mong muốn (Rộng x Cao)
         # Bạn có thể thử nghiệm các giá trị này, ví dụ: 450x550 hoặc 400x500
-        self.controller.geometry("800x500")
+        self.controller.state('zoomed')
