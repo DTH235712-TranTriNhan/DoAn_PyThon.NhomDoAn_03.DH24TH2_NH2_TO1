@@ -454,3 +454,137 @@ def resumeProduct(sku):
     finally:
         if conn:
             conn.close()
+
+    # (THÊM HÀM NÀY VÀO CUỐI FILE  để tìm kiếm  dbProducts.py)
+
+def searchProductsForPOS(keyword):
+    """
+    Tìm kiếm sản phẩm (theo Tên hoặc SKU) CHỈ LẤY CÁC SẢN PHẨM CÒN KINH DOANH (isActive=1)
+    và trả về định dạng dictionary giống hệt getProductsForPOS.
+    """
+    conn = getDbConnection()
+    products = []
+    if not conn: return []
+    cursor = conn.cursor()
+    
+    try:
+        # SỬA ĐỔI: Thêm "AND isActive = 1"
+        sql_query = """
+        SELECT SKU, name, category, price, stockQuantity, ImagePath, Description 
+        FROM Products 
+        WHERE (name LIKE ? OR SKU LIKE ?) AND isActive = 1 
+        """
+        # Thêm dấu % cho tìm kiếm LIKE
+        search_term = '%' + keyword.strip() + '%'
+        
+        cursor.execute(sql_query, (search_term, search_term))
+        rows = cursor.fetchall()
+        
+        # SAO CHÉP LOGIC ĐỊNH DẠNG TỪ getProductsForPOS
+        for row in rows:
+            price = row[3]
+            price_float = 0 
+            try:
+                price_float = float(price) 
+                price_str = f"{price_float:,.0f} VNĐ"
+            except:
+                price_str = str(price) + " (Lỗi Giá)"
+            
+            products.append({
+                'sku': row[0],
+                'name': row[1].strip("'") if isinstance(row[1], str) else row[1],
+                'category': row[2].strip("'") if isinstance(row[2], str) else row[2],
+                'price_str': price_str,     # Dùng để hiển thị
+                'price': price_float,       # Dùng để tính giỏ hàng
+                'stock': int(row[4]),
+                'imagePath': row[5] if row[5] else '',
+                'description': row[6] if row[6] else ''
+            })
+            
+    except Exception as e:
+        print(f"Lỗi khi tìm kiếm sản phẩm POS: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+    return products
+
+# thêm danh mục 
+# (THÊM VÀO CUỐI FILE dbProducts.py)
+
+def getAllCategories():
+    """
+    Lấy danh sách tất cả các danh mục (category) duy nhất đang kinh doanh (isActive=1).
+    """
+    conn = getDbConnection()
+    categories = []
+    if not conn: return []
+    cursor = conn.cursor()
+    
+    try:
+        # Lấy các danh mục duy nhất, không trùng lặp, bỏ qua NULL và lọc theo isActive=1
+        query = """
+        SELECT DISTINCT category 
+        FROM Products 
+        WHERE category IS NOT NULL AND category != '' AND isActive = 1
+        ORDER BY category
+        """
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        # Chuyển đổi từ list of tuples [('Vang Đỏ',), ('Vang Trắng',)] sang list ['Vang Đỏ', 'Vang Trắng']
+        categories = [row[0] for row in rows]
+            
+    except Exception as e:
+        print(f"Lỗi khi lấy danh mục: {e}")
+    finally:
+        if conn:
+            conn.close()
+    return categories
+
+def getProductsByCategoryForPOS(category):
+    """
+    Lấy tất cả sản phẩm thuộc một danh mục (category) cụ thể
+    và trả về định dạng dictionary giống hệt getProductsForPOS.
+    """
+    conn = getDbConnection()
+    products = []
+    if not conn: return []
+    cursor = conn.cursor()
+    
+    try:
+        # Lọc theo category và isActive = 1
+        query = """
+        SELECT SKU, name, category, price, stockQuantity, ImagePath, Description 
+        FROM Products 
+        WHERE category = ? AND isActive = 1
+        """
+        cursor.execute(query, (category,))
+        rows = cursor.fetchall()
+        
+        # Sao chép logic định dạng từ getProductsForPOS
+        for row in rows:
+            price = row[3]
+            price_float = 0 
+            try:
+                price_float = float(price) 
+                price_str = f"{price_float:,.0f} VNĐ"
+            except:
+                price_str = str(price) + " (Lỗi Giá)"
+            
+            products.append({
+                'sku': row[0],
+                'name': row[1].strip("'") if isinstance(row[1], str) else row[1],
+                'category': row[2].strip("'") if isinstance(row[2], str) else row[2],
+                'price_str': price_str,
+                'price': price_float,
+                'stock': int(row[4]),
+                'imagePath': row[5] if row[5] else '',
+                'description': row[6] if row[6] else ''
+            })
+            
+    except Exception as e:
+        print(f"Lỗi khi lấy sản phẩm theo danh mục: {e}")
+    finally:
+        if conn:
+            conn.close()
+    return products
