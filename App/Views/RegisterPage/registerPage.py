@@ -123,6 +123,6 @@ class RegisterPage(tk.Frame):
     def on_show_frame(self):
         """Hàm này sẽ được controller gọi khi trang này được hiển thị."""
         # Đặt kích thước cửa sổ mong muốn (Rộng x Cao)
-        self.controller.geometry("800x500")
+        self.controller.state('zoomed')
         # Focus vào trường username
         self.fields['username'].focus_set()

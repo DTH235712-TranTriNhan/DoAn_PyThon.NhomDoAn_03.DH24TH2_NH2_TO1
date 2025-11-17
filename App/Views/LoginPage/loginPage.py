@@ -118,6 +118,6 @@ class LoginPage(tk.Frame):
     def on_show_frame(self):
         """Hàm này sẽ được controller gọi khi trang này được hiển thị."""
         # Đặt kích thước cửa sổ mong muốn (Rộng x Cao)
-        self.controller.geometry("550x550")
+        self.controller.state('zoomed')
         # Tự động focus vào trường username
         self.username_entry.focus_set()
