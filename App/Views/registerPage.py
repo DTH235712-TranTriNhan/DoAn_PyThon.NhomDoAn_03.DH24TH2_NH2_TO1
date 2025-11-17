@@ -6,20 +6,21 @@ import uuid
 
 class RegisterPage(tk.Frame):
     def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
+        # 1. --- THIẾT LẬP NỀN CHÍNH ---
+        tk.Frame.__init__(self, parent, bg="#FFF8F0") 
         self.controller = controller
         
-        # Thiết lập kích thước tối thiểu cho cửa sổ để chứa giao diện 2 cột
-        # Bạn có thể điều chỉnh 600x400 cho phù hợp với ứng dụng tổng thể
-        # Lưu ý: Lệnh này thường đặt ở cửa sổ root, nhưng có thể dùng để gợi ý kích thước
-        # Tạm thời bỏ qua việc đặt kích thước cố định ở đây nếu bạn sử dụng controller
-        # để quản lý cửa sổ root, nhưng giao diện sẽ rộng ra.
-
-        tk.Label(self, text="ĐĂNG KÝ TÀI KHOẢN", font=("Times New Roman", 24), fg="red").pack(pady=20)
+        # 2. --- TIÊU ĐỀ ĐỒNG BỘ ---
+        tk.Label(
+            self, text="🍇 ĐĂNG KÝ TÀI KHOẢN", 
+            font=("Times New Roman", 24, "bold"), 
+            fg="#8B0000", # Màu đỏ rượu
+            bg="#FFF8F0"
+        ).pack(pady=20)
         
         # Khung nhập liệu (container chính cho các Label/Entry)
-        fields_frame = tk.Frame(self)
-        fields_frame.pack(pady=10, padx=20) # Thêm padx để có lề hai bên
+        fields_frame = tk.Frame(self, bg="#FFF8F0") # Nền đồng bộ
+        fields_frame.pack(pady=10, padx=20) 
 
         self.fields = {}
         
@@ -27,72 +28,85 @@ class RegisterPage(tk.Frame):
         labels = ["Tên đăng nhập", "Mật khẩu", "Nhập lại Mật khẩu", "Họ và tên", "Điện thoại", "Địa chỉ"]
         keys = ["username", "password", "confirm_password", "fullname", "phone", "address"]
         
-        # --- LOGIC CHIA THÀNH 2 CỘT ---
-        # 3 trường đầu (0, 1, 2) sẽ ở Cột 0 (Label: 0, Entry: 1)
-        # 3 trường sau (3, 4, 5) sẽ ở Cột 2 (Label: 2, Entry: 3)
-
-        num_fields = len(keys) # 6 trường
+        # --- LOGIC CHIA THÀNH 2 CỘT (Giữ nguyên) ---
+        num_fields = len(keys) 
         
         for i, (label_text, key) in enumerate(zip(labels, keys)):
             
             # Xác định vị trí (Row và Column)
-            if i < num_fields / 2: # 3 trường đầu (i = 0, 1, 2)
+            if i < num_fields / 2: # 3 trường đầu
                 current_row = i
                 label_column = 0
                 entry_column = 1
-            else: # 3 trường sau (i = 3, 4, 5)
+            else: # 3 trường sau
                 current_row = i - int(num_fields / 2) # Row 0, 1, 2
                 label_column = 2
                 entry_column = 3
 
-            # 1. Tạo Label
-            tk.Label(fields_frame, text=f"{label_text}:", font=("Times New Roman", 15)).grid(
+            # 3. --- LABEL ĐỒNG BỘ ---
+            tk.Label(
+                fields_frame, text=f"{label_text}:", 
+                font=("Times New Roman", 15),
+                fg="#5C2E0C", # Màu chữ nâu
+                bg="#FFF8F0"
+            ).grid(
                 row=current_row, column=label_column, sticky="w", padx=(30, 5), pady=10
             )
             
-            # 2. Tạo Entry
-            # Giữ nguyên width để cả hai cột trông đồng đều.
+            # 4. --- ENTRY ĐỒNG BỘ ---
             entry_width = 30
+            entry_font = ("Times New Roman", 11)
+            
             if key in ["password", "confirm_password"]:
-                entry = tk.Entry(fields_frame, width=entry_width, show="*")
+                entry = tk.Entry(
+                    fields_frame, width=entry_width, show="*",
+                    font=entry_font, relief="solid", bd=1
+                )
             else:
-                entry = tk.Entry(fields_frame, width=entry_width)
+                entry = tk.Entry(
+                    fields_frame, width=entry_width,
+                    font=entry_font, relief="solid", bd=1
+                )
                 
-            # GẮN SỰ KIỆN: Kiểm tra duy nhất theo thời gian thực (chỉ cho username)
+            # GẮN SỰ KIỆN: Kiểm tra duy nhất (Giữ nguyên)
             if key == "username":
                 entry.bind("<KeyRelease>", self.check_unique_input)
                 
             entry.grid(row=current_row, column=entry_column, padx=(5, 30), pady=10)
             self.fields[key] = entry
             
-        # Nút Đăng ký và Quay lại giờ sẽ ở dưới, căn giữa khung nhập liệu (columnspan=4)
-        
-        # Khung chứa nút để căn giữa dễ dàng hơn
-        buttons_frame = tk.Frame(self)
+        # Khung chứa nút
+        buttons_frame = tk.Frame(self, bg="#FFF8F0") # Nền đồng bộ
         buttons_frame.pack(pady=20)
 
-        # Nút Đăng ký
-        tk.Button(buttons_frame, 
-                  text="Đăng ký", 
-                  font=("Times New Roman", 15), 
-                  command=self.register_action, 
-                  width=20,
-                  bg="red",
-                  fg="white"
+        # 5. --- NÚT ĐĂNG KÝ ĐỒNG BỘ ---
+        tk.Button(
+            buttons_frame, 
+            text="Đăng ký", 
+            font=("Times New Roman", 15, "bold"), # Thêm bold
+            command=self.register_action, 
+            width=20,
+            bg="#A52A2A", # Màu nút nâu đỏ
+            fg="white",
+            relief="flat" # Đồng bộ
         ).pack(pady=30)
         
-        # Nút Quay lại
-        tk.Button(buttons_frame, 
-                  text="Quay lại Đăng nhập", 
-                  font=("Times New Roman", 13),
-                  width=17,
-
-                  command=lambda: controller.show_frame("LoginPage"),
-                  relief="flat", borderwidth=0
-
+        # 6. --- NÚT QUAY LẠI ĐỒNG BỘ (Style link) ---
+        tk.Button(
+            buttons_frame, 
+            text="Quay lại Đăng nhập", 
+            font=("Times New Roman", 13, "underline"), # Thêm gạch chân
+            command=lambda: controller.show_frame("LoginPage"),
+            fg="#5C2E0C", # Màu chữ nâu
+            bg="#FFF8F0",
+            relief="flat", 
+            borderwidth=0,
+            cursor="hand2" # Đổi con trỏ
         ).pack(pady=10)
 
 
+
+#  LOGIC XỬ LÝ Ở DƯỚI ĐÂY  #
 
         
 
@@ -152,3 +166,9 @@ class RegisterPage(tk.Frame):
             self.controller.show_frame("LoginPage")
         else:
             messagebox.showerror("Lỗi", message)
+
+    def on_show_frame(self):
+        """Hàm này sẽ được controller gọi khi trang này được hiển thị."""
+        # Đặt kích thước cửa sổ mong muốn (Rộng x Cao)
+        # Bạn có thể thử nghiệm các giá trị này, ví dụ: 450x550 hoặc 400x500
+        self.controller.geometry("800x500")

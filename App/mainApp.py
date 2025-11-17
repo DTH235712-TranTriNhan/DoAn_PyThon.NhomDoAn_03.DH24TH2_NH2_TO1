@@ -30,6 +30,9 @@ class SalesApp(tk.Tk):
     def show_frame(self, page_name):
         '''Hiển thị frame được chỉ định'''
         frame = self.frames[page_name]
+        if hasattr(frame, "on_show_frame"):
+            frame.on_show_frame() # Nếu có, hãy gọi nó để cập nhật kích thước
+    # ---------------------
         frame.tkraise()
         if hasattr(frame, "on_show"):
             frame.on_show()
@@ -37,3 +40,5 @@ class SalesApp(tk.Tk):
 if __name__ == "__main__":
     app = SalesApp()
     app.mainloop()
+
+    
