@@ -6,7 +6,6 @@ from Database.dbProducts import (
     getAllProductsForAdmin
 )
 
-
 class ProductActionsMixin:
 
     def clear_entries(self):
@@ -151,6 +150,8 @@ class ProductActionsMixin:
                 messagebox.showinfo("Thành công", msg)
                 self.load_products()
                 self.clear_entries()
+                if hasattr(self, 'load_pos_products'):
+                    self.load_pos_products()
             else:
                 messagebox.showerror("Lỗi", msg)
 
@@ -166,6 +167,8 @@ class ProductActionsMixin:
                 messagebox.showinfo("Thành công", msg)
                 self.load_products()
                 self.clear_entries()
+                if hasattr(self, 'load_pos_products'):
+                    self.load_pos_products()
             else:
                 messagebox.showerror("Lỗi", msg)
 

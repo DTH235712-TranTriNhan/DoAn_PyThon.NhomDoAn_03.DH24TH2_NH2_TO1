@@ -34,7 +34,7 @@ class ProductTabUI:
         )
         input_frame.pack(fill="x", padx=10)
 
-        labels = ["Mã Sản Phẩm ", "Tên Sản Phẩm", "Danh mục", "Giá", "Tồn kho", "Đường dẫn Ảnh", "Mô tả"]
+        labels = ["Mã Sản Phẩm ", "Tên Sản Phẩm", "Thương Hiệu", "Giá", "Tồn Kho", "Đường Dẫn Ảnh", "Mô Tả"]
         keys = ["sku", "name", "category", "price", "stock", "imagePath", "description"]
 
         base_fields = ["sku", "name", "category", "price", "stock"]
@@ -182,7 +182,7 @@ class ProductTabUI:
 
         # TreeView
         columns = (
-            "Mã Sản Phẩm", "Tên Sản Phẩm", "Danh mục", "Giá",
+            "Mã Sản Phẩm", "Tên Sản Phẩm", "Thương Hiệu", "Giá",
             "Tồn kho", "Đường dẫn Ảnh", "Mô tả", "Trạng thái"
         )
 

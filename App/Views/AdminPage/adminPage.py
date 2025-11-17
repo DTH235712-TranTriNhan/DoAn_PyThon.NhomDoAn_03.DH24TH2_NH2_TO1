@@ -24,7 +24,9 @@ class AdminPage(
         self.controller = controller
         self.entries = {}
         self.photo_admin = None
-        self.categories = ["Điện tử", "Phụ kiện", "Đồ gia dụng", "Thời trang", "Khác"]
+        self.categories = ["Rượu Whisky", "Rượu Brandy",
+                            "Rượu Vodka", "Rượu Gin", "Rượu Rum", "Rượu Tequila",
+                            "Rượu Vang", "Rượu Mùi",  "Khác"]
 
         # Tạo Style chung
         self.setup_styles()
