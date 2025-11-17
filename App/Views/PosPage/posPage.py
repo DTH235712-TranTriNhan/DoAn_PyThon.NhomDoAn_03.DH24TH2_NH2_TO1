@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox
 from PIL import Image, ImageTk 
 import os
 
-from App.Views.ProductCard import ProductCard
+from App.Views.PosPage.ProductCard import ProductCard
 from Database.dbOrders import createOrder, format_currency
 from Database.dbProducts import getProductsForPOS
 # Giả định ProductCard, dbProducts, dbOrders, format_currency được import và hoạt động đúng
@@ -41,6 +41,7 @@ class POSPage(tk.Frame):
         self.create_product_grid() 
         self.create_footer()
         self.load_products_list()
+        self.show_next_products()
 
     # --- FIX 2: PROPERTY KIỂM TRA ĐĂNG NHẬP ---
     @property
@@ -132,18 +133,28 @@ class POSPage(tk.Frame):
         self.grid_frame = tk.Frame(self.canvas, bg="#FFF8F0")
         self.canvas_window = self.canvas.create_window((0, 0), window=self.grid_frame, anchor="nw") 
 
-        # 3. Label thông báo "Không có sản phẩm" (Tạo nhưng chưa pack)
+        # 3. Label thông báo "Không có sản phẩm"
         self.no_products_label = tk.Label(
-            self.grid_frame, text="Không có sản phẩm nào để hiển thị.", 
+            product_area, 
+            text="Không có sản phẩm nào để hiển thị.", 
             bg="#FFF8F0", fg="#5C2E0C", font=("Times New Roman", 14)
         )
+        # Không pack/place/grid ở đây, nó sẽ được xử lý trong show_next_products
 
         # Ràng buộc sự kiện để cập nhật kích thước 
         self.canvas.bind('<Configure>', self.on_canvas_resize) 
         self.grid_frame.bind('<Configure>', self._update_scroll_region)
         self.canvas.bind('<Configure>', self._update_scroll_region, add='+')
+        
+        # <<< THAY ĐỔI QUAN TRỌNG: SỬ DỤNG bind TRÊN CANVAS VÀ WIDGET CON >>>
+        # Ràng buộc cuộn trực tiếp trên Canvas (Hoạt động khi chuột trên Canvas hoặc Scrollbar)
+        self.canvas.bind("<MouseWheel>", self._on_canvas_mousewheel) 
+        self.canvas.bind("<Button-4>", self._on_canvas_mousewheel) 
+        self.canvas.bind("<Button-5>", self._on_canvas_mousewheel)
+        # KHÔNG DÙNG bind_all ở đây nữa. Việc này sẽ được xử lý đệ quy ở _bind_children_mousewheel
+        # -----------------------------------------------------------------------------------
 
-        # Nút Xem thêm (Đặt bên ngoài Canvas)
+        # Nút Xem thêm (Đặt bên ngoài Canvas, là con của self)
         self.more_btn = tk.Button(
             self, text="Xem thêm sản phẩm",
             bg="#A52A2A", fg="white",
@@ -151,14 +162,10 @@ class POSPage(tk.Frame):
             command=self.load_more_products
         )
 
-        self.canvas.bind_all("<MouseWheel>", self._on_canvas_mousewheel)    # Windows, Mac
-        self.canvas.bind_all("<Button-4>", self._on_canvas_mousewheel)      # Linux scroll up
-        self.canvas.bind_all("<Button-5>", self._on_canvas_mousewheel)
-
     def on_canvas_resize(self, event):
-        """Đảm bảo self.grid_frame (nội dung) luôn rộng bằng Canvas."""
-        canvas_width = event.width
-        self.canvas.itemconfig(self.canvas_window, width=canvas_width)
+        """Cập nhật chiều rộng của Canvas Window để khớp với Canvas."""
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
+        self._update_scroll_region() # Cập nhật vùng cuộn khi Canvas thay đổi kích thước
 
     def load_products_list(self):
         """Tải và làm mới danh sách sản phẩm."""
@@ -203,11 +210,17 @@ class POSPage(tk.Frame):
         # Trường hợp 1: Danh sách sản phẩm TỔNG THỂ trống.
         if not self.products:
             self.more_btn.pack_forget() 
-            self.no_products_label.pack(pady=50) 
+            # Sử dụng place() để căn giữa trong product_area
+            self.no_products_label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
             return
 
         # Ẩn thông báo "Không có sản phẩm" nếu đã có sản phẩm
-        self.no_products_label.pack_forget()
+        self.no_products_label.place_forget() 
+
+        if start == 0:
+            # Làm sạch grid_frame
+            for widget in self.grid_frame.winfo_children():
+                widget.destroy()
 
         # Tính toán row offset (hàng bắt đầu) để sản phẩm mới nối tiếp sản phẩm cũ
         row_offset = start // cols 
@@ -215,6 +228,7 @@ class POSPage(tk.Frame):
         for i, prod_data in enumerate(display_items):
             # CẬP NHẬT: Dùng Mock ProductCard nếu cần
             try:
+                # Giả định ProductCard đã được import
                 card = ProductCard(self.grid_frame, prod_data, self.open_product_detail)
             except NameError:
                 # Fallback: Dùng Label đơn giản nếu ProductCard không import được
@@ -224,13 +238,17 @@ class POSPage(tk.Frame):
             r, c = divmod(i, cols) 
             card.grid(row=r + row_offset, column=c, padx=5, pady=5, sticky="nsew") 
             
+            # <<< RÀNG BUỘC SỰ KIỆN CUỘN CHO CARD VÀ CÁC WIDGET CON CỦA NÓ >>>
+            self._bind_children_mousewheel(card) 
+            # ---------------------------------------------------------------
+
             if start == 0:
                 self.grid_frame.grid_columnconfigure(c, weight=1) 
 
         # Cần ràng buộc lại scrollregion sau khi thêm widget
         self.grid_frame.update_idletasks()
         self.canvas.config(scrollregion = self.canvas.bbox("all"))
-
+        
         # --- ĐIỀU CHỈNH HIỂN THỊ NÚT "XEM THÊM" ---
         if end < len(self.products):
             self.more_btn.config(state=tk.NORMAL, text="Xem thêm sản phẩm")
@@ -242,6 +260,20 @@ class POSPage(tk.Frame):
     def load_more_products(self):
         self.display_index += 6
         self.show_next_products()
+
+    def _bind_children_mousewheel(self, widget):
+        """
+        Ràng buộc sự kiện cuộn cho widget và tất cả các widget con.
+        Mục đích: Khi chuột ở trên ProductCard (hoặc bất kỳ widget con nào), 
+        nó sẽ chuyển tiếp sự kiện cuộn lên hàm _on_canvas_mousewheel của Canvas.
+        """
+        widget.bind("<MouseWheel>", self._on_canvas_mousewheel)
+        widget.bind("<Button-4>", self._on_canvas_mousewheel)
+        widget.bind("<Button-5>", self._on_canvas_mousewheel)
+        
+        # Ràng buộc đệ quy cho tất cả widget con
+        for child in widget.winfo_children():
+            self._bind_children_mousewheel(child)
         
     # ------------------ CỬA SỔ CHI TIẾT SẢN PHẨM ------------------
     def open_product_detail(self, product):
@@ -848,45 +880,60 @@ class POSPage(tk.Frame):
 
     def _on_canvas_mousewheel(self, event):
         """
-        Xử lý cuộn chuột trên Canvas. 
-        Chỉ cho phép cuộn khi nội dung vượt quá chiều cao Canvas.
+        Xử lý cuộn chuột cho Canvas.
+        Thực hiện cuộn và trả về "break" để ngăn sự kiện lan truyền.
         """
-        # Cần update_idletasks để bbox() trả về kích thước mới nhất của self.grid_frame
-        self.canvas.update_idletasks()
+        # Không cần kiểm tra scrollregion/content_height ở đây. 
+        # Tkinter sẽ tự giới hạn khi cuộn.
         
-        # 1. Lấy kích thước nội dung (self.grid_frame)
-        bbox = self.canvas.bbox("all")
-        # Nếu chưa có nội dung, mặc định là 0
-        content_height = bbox[3] if bbox else 0 
-        
-        # 2. Lấy chiều cao của Canvas (vùng nhìn thấy)
-        canvas_height = self.canvas.winfo_height()
-        if content_height > canvas_height:
-            if event.num == 5 or event.delta < 0:
-                self.canvas.yview_scroll(1, "units")
-            elif event.num == 4 or event.delta > 0:
+        if event.delta: # Windows/Linux
+            # Scroll 1 unit (hoặc 1/120 delta)
+            self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        else: # MacOS/Linux (Button-4, Button-5)
+            if event.num == 4:
                 self.canvas.yview_scroll(-1, "units")
-            return "break"
-        else:
-            return "break"
+            elif event.num == 5:
+                self.canvas.yview_scroll(1, "units")
+        
+        # TRẢ VỀ "break" ĐỂ NGĂN CHẶN SỰ KIỆN CUỘN LÊN WIDGET CHA
+        return "break"
         
     def _update_scroll_region(self, event=None):
-        """Tính toán scrollregion và điều chỉnh scrollbar."""
-        self.canvas.update_idletasks()
-        scroll_bbox = self.canvas.bbox("all")
+        """
+        Cập nhật scrollregion của Canvas dựa trên kích thước của grid_frame.
+        Điều chỉnh logic ẩn/hiện Scrollbar.
+        """
+        self.canvas.update_idletasks() # Đảm bảo grid_frame đã được tính toán kích thước
+        bbox = self.canvas.bbox("all")
         
-        # 1. Đặt scrollregion mặc định theo nội dung
-        self.canvas.config(scrollregion=scroll_bbox)
+        if bbox is None:
+            self.canvas.config(scrollregion=(0, 0, 0, 0))
+            self.v_scroll.pack_forget() # Ẩn nếu không có nội dung
+            return
+            
+        self.canvas.config(scrollregion=bbox)
         
-        # 2. Điều chỉnh trạng thái của Scrollbar
-        if scroll_bbox and scroll_bbox[3] <= self.canvas.winfo_height():
-            # Nếu nội dung nhỏ hơn hoặc bằng Canvas, vô hiệu hóa scrollbar
-            self.v_scroll.pack_forget() # Ẩn hẳn scrollbar
+        # Tính toán chiều cao:
+        # content_height: Chiều cao thực của nội dung (grid_frame)
+        # canvas_height: Chiều cao hiện tại của Canvas
+        
+        canvas_height = self.canvas.winfo_height()
+        # bbox[3] là y max, bbox[1] là y min (tính từ 0,0 của canvas). content_height = bbox[3] - bbox[1]
+        content_height = bbox[3] 
+        
+        # Thêm một ngưỡng nhỏ (ví dụ: 1 pixel) để tránh lỗi làm tròn
+        SCROLL_THRESHOLD = 1
+        
+        if content_height <= canvas_height + SCROLL_THRESHOLD:
+            # Nếu nội dung nhỏ hơn hoặc bằng chiều cao canvas, ẩn Scrollbar
+            self.v_scroll.pack_forget()
+            
+            # Đảm bảo cuộn về đầu khi Scrollbar bị ẩn
+            self.canvas.yview_moveto(0) 
+            
         else:
-            # Ngược lại, hiển thị scrollbar
+            # Nếu nội dung lớn hơn chiều cao canvas, hiển thị Scrollbar
             self.v_scroll.pack(side="right", fill="y")
-            # Cần đảm bảo canvas và scrollbar được bố trí đúng trong container cha
-            # (Giả định bạn đã dùng grid/pack cho self.canvas và self.v_scroll trong create_product_grid)
 
 
     def on_show_frame(self):
