@@ -30,34 +30,28 @@ class POSPage(tk.Frame):
         self.current_user = None
         self.cart_items = {}
         self.products = []
-        self.display_index = 0 # để phân trang sản phẩm (6 sp / lần)
-        self.photo_modal = None # Lưu trữ ImageTk.PhotoImage cho modal
-        # Cập nhật trạng thái Toast
+        self.display_index = 0
+        self.photo_modal = None
         self.current_toast = None 
         self.toast_id = None 
 
-        # --- SẮP XẾP LẠI THỨ TỰ GỌI HÀM LAYOUT ---
+        # --- THÊM MỚI: ĐỂ LƯU CÁC NÚT DANH MỤC ---
+        self.category_buttons = [] # Dùng để quản lý highlight
 
         # 1. GỌI FOOTER TRƯỚC VỚI side="bottom"
-        # Điều này sẽ "neo" nó cố định xuống đáy vĩnh viễn
         self.create_footer()
 
-        # 2. GỌI HEADER (sẽ ở trên cùng, side="top" mặc định)
+        # 2. GỌI HEADER
         self.create_header()
         
-        # 3. GỌI THANH TÌM KIẾM (sẽ ở dưới header, side="top" mặc định)
-        self.create_search_bar() 
-
-        # 4. GỌI TOAST MANAGER (không hiển thị)
+        # 3. GỌI TOAST MANAGER (không hiển thị)
         self.create_toast_manager() 
         
-        # 5. GỌI PRODUCT GRID (sẽ ở dưới thanh tìm kiếm)
-        # Nó sẽ tự động lấp đầy không gian còn lại (vì footer đã ở đáy)
+        # 4. GỌI PRODUCT GRID (quan trọng)
+        #    (Hàm này BÂY GIỜ cũng sẽ gọi create_search_bar)
         self.create_product_grid() 
         
-        # -----------------------------------------------
-        
-        # 6. Tải sản phẩm (giữ nguyên như bạn muốn)
+        # 5. Tải sản phẩm
         self.load_products_list()
 
     # --- FIX 2: PROPERTY KIỂM TRA ĐĂNG NHẬP ---
@@ -99,15 +93,18 @@ class POSPage(tk.Frame):
     
 
     # ------------------ THANH TÌM KIẾM (MỚI) ------------------
-    def create_search_bar(self):
-        """Tạo thanh tìm kiếm và nút reset."""
-        search_frame = tk.Frame(self, bg="#FFF8F0", pady=5)
-        search_frame.pack(fill="x", padx=20)
+    def create_search_bar(self, parent):
+        """Tạo thanh tìm kiếm và nút reset (BÊN TRONG KHUNG CHA)."""
+        
+        # Dùng parent được truyền vào, thay vì 'self'
+        search_frame = tk.Frame(parent, bg="#FFF8F0", pady=5)
+        # Bỏ padx=20, vì khung cha (right_content_frame) sẽ xử lý
+        search_frame.pack(fill="x") 
 
         self.search_entry = ttk.Entry(
             search_frame, 
             font=("Times New Roman", 12),
-            width=50 # Đặt chiều rộng cố định hoặc để pack tự xử lý
+            width=40  # <-- "Ngắn lại"
         )
         self.search_entry.pack(side="left", fill="x", expand=True, padx=(0, 5), ipady=2)
 
@@ -116,7 +113,7 @@ class POSPage(tk.Frame):
             bg="#A52A2A", fg="white", 
             font=("Times New Roman", 11, "bold"),
             relief="flat", cursor="hand2",
-            command=self.perform_search # Gọi hàm tìm kiếm
+            command=self.perform_search
         )
         search_btn.pack(side="left", padx=5)
 
@@ -125,9 +122,17 @@ class POSPage(tk.Frame):
             bg="#757575", fg="white", 
             font=("Times New Roman", 11, "bold"),
             relief="flat", cursor="hand2",
-            command=self.load_products_list # Gọi lại hàm tải tất cả sản phẩm
+            command=lambda: (
+                self._set_active_category_button(self.category_buttons[0] if self.category_buttons else None), 
+                self.load_products_list()
+            )
         )
         reset_btn.pack(side="left", padx=5)
+        
+        self.search_entry.bind("<Return>", self.perform_search)
+        reset_btn.pack(side="left", padx=5)
+        
+        self.search_entry.bind("<Return>", self.perform_search)
         
         # Bind phím Enter để tìm kiếm
         self.search_entry.bind("<Return>", self.perform_search)
@@ -168,23 +173,29 @@ class POSPage(tk.Frame):
 
     # ------------------ GRID SẢN PHẨM ------------------
     def create_product_grid(self):
-        # Frame chứa cả Sidebar và Canvas (không đổi)
+        # Frame chứa cả Sidebar và Canvas
+        # Bỏ padx=20 ở đây
         self.main_content_area = tk.Frame(self, bg="#FFF8F0") 
-        self.main_content_area.pack(fill="both", expand=True, padx=20, pady=0) 
+        self.main_content_area.pack(fill="both", expand=True, padx=0, pady=0) 
 
-        # 1. TẠO SIDEBAR DANH MỤC (BÊN TRÁI - không đổi)
+        # 1. TẠO SIDEBAR DANH MỤC (BÊN TRÁI)
+        #    (Hàm create_category_sidebar sẽ tự xử lý padding)
         self.create_category_sidebar(self.main_content_area)
 
-        # 2. TẠO KHUNG BÊN PHẢI (SẼ CHỨA CANVAS VÀ NÚT "XEM THÊM")
+        # 2. TẠO KHUNG BÊN PHẢI (SẼ CHỨA TÌM KIẾM, CANVAS, "XEM THÊM")
         right_content_frame = tk.Frame(self.main_content_area, bg="#FFF8F0")
-        right_content_frame.pack(side="left", fill="both", expand=True)
+        # Thêm padding (khoảng cách) cho khung bên phải
+        right_content_frame.pack(side="left", fill="both", expand=True, padx=(0, 20))
 
-        # 3. TẠO KHUNG CON CHO CANVAS + SCROLLBAR (ĐỂ NÓ CÓ THỂ EXPAND)
-        #    Nút "Xem thêm" sẽ nằm BÊN DƯỚI khung này
+        # 3. GỌI THANH TÌM KIẾM (BÊN TRONG right_content_frame)
+        #    Nó sẽ pack() ở trên cùng của khung bên phải
+        self.create_search_bar(right_content_frame) # <-- GỌI HÀM TẠI ĐÂY
+
+        # 4. TẠO KHUNG CON CHO CANVAS + SCROLLBAR
         canvas_scroll_frame = tk.Frame(right_content_frame, bg="#FFF8F0")
-        canvas_scroll_frame.pack(fill="both", expand=True) # <-- Sẽ chiếm hết không gian trên
+        canvas_scroll_frame.pack(fill="both", expand=True)
 
-        # 4. Canvas và Scrollbar (parent là canvas_scroll_frame)
+        # 5. Canvas và Scrollbar
         self.canvas = tk.Canvas(canvas_scroll_frame, bg="#FFF8F0", highlightthickness=0)
         self.canvas.pack(side="left", fill="both", expand=True) 
 
@@ -192,34 +203,32 @@ class POSPage(tk.Frame):
         self.v_scroll.pack(side="right", fill="y")
         self.canvas.configure(yscrollcommand=self.v_scroll.set)
 
-        # 5. self.grid_frame (Frame bên trong Canvas - không đổi)
+        # 6. self.grid_frame (Bên trong Canvas)
         self.grid_frame = tk.Frame(self.canvas, bg="#FFF8F0")
         self.canvas_window = self.canvas.create_window((0, 0), window=self.grid_frame, anchor="nw") 
 
-        # 6. Label "Không có sản phẩm" (không đổi)
+        # 7. Label "Không có sản phẩm"
         self.no_products_label = tk.Label(
             self.grid_frame, text="Không có sản phẩm nào để hiển thị.", 
             bg="#FFF8F0", fg="#5C2E0C", font=("Times New Roman", 14)
         )
 
-        # Ràng buộc sự kiện (không đổi)
+        # Ràng buộc sự kiện
         self.canvas.bind('<Configure>', self.on_canvas_resize) 
         self.grid_frame.bind('<Configure>', self._update_scroll_region)
         self.canvas.bind('<Configure>', self._update_scroll_region, add='+')
 
-        # 7. Nút Xem thêm (THAY ĐỔI PARENT)
-        #    Parent của nó bây giờ là right_content_frame
+        # 8. Nút Xem thêm (Parent là right_content_frame)
         self.more_btn = tk.Button(
-            right_content_frame, # <-- THAY ĐỔI TỪ self SANG right_content_frame
+            right_content_frame, # Parent là right_content_frame
             text="Xem thêm sản phẩm",
             bg="#A52A2A", fg="white",
             font=("Times New Roman", 12, "bold"),
             command=self.load_more_products
         )
-        # Lưu ý: Chúng ta vẫn .pack() và .pack_forget() nút này trong
-        # hàm show_next_products như cũ.
+        # (Nút này sẽ được .pack() trong hàm show_next_products)
 
-        # Ràng buộc cuộn chuột (không đổi)
+        # Ràng buộc cuộn chuột
         self.canvas.bind_all("<MouseWheel>", self._on_canvas_mousewheel)
         self.canvas.bind_all("<Button-4>", self._on_canvas_mousewheel)
         self.canvas.bind_all("<Button-5>", self._on_canvas_mousewheel)
@@ -314,12 +323,14 @@ class POSPage(tk.Frame):
             self.show_error_toast("Vui lòng nhập tên hoặc SKU để tìm.")
             return
 
+        # --- THÊM MỚI: Bỏ highlight tất cả các nút danh mục ---
+        self._set_active_category_button(None) 
+        # ----------------------------------------------------
+
         try:
-            # SỬ DỤNG MOCK DATA NẾU KHÔNG CÓ DB
             try:
                 self.products = searchProductsForPOS(keyword) or []
             except NameError:
-                # (Giữ nguyên phần mock data của bạn)
                 print("Warning: Using Mock Data for Search.")
                 all_products = [
                     {"sku": "SKU001", "name": "Vang Đỏ Cabernet", "price": 500000.0, "price_str": "500.000 đ", "stock": 10, "imagePath": "wine1.jpg"},
@@ -331,27 +342,10 @@ class POSPage(tk.Frame):
             messagebox.showerror("Lỗi Tìm Kiếm", f"Không thể tìm sản phẩm: {e}")
             self.products = []
 
-        # THAY THẾ toàn bộ phần code hiển thị (xóa widget, pack_forget, v.v.)
-        # BẰNG 1 DÒNG NÀY:
+        # --- THAY ĐỔI: DỌN DẸP CODE ---
+        # Bỏ 4 dòng (for widget... self.canvas.yview_moveto(0))
+        # và thay bằng hàm trợ giúp của bạn:
         self._display_product_list()
-
-        # ----- SAU KHI CÓ KẾT QUẢ TÌM KIẾM (self.products) -----
-        
-        self.display_index = 0
-        
-        # 1. Xóa tất cả các card cũ
-        for widget in self.grid_frame.winfo_children():
-            widget.destroy()
-            
-        # 2. Ẩn nút "Xem thêm" (Kết quả tìm kiếm không phân trang)
-        self.more_btn.pack_forget() 
-            
-        # 3. Hiển thị kết quả (show_next_products sẽ xử lý nếu self.products rỗng)
-        self.show_next_products() 
-        
-        # 4. Đặt lại vị trí Scrollbar về đầu
-        if hasattr(self, 'canvas'):
-            self.canvas.yview_moveto(0)
         
     # ------------------ CỬA SỔ CHI TIẾT SẢN PHẨM ------------------
     def open_product_detail(self, product):
@@ -1010,11 +1004,14 @@ class POSPage(tk.Frame):
 
     # (THÊM 3 HÀM MỚI NÀY VÀO CLASS POSPage)
 
+    # (THAY THẾ HÀM CŨ TRONG POSPage.py BẰNG HÀM NÀY)
+
     def create_category_sidebar(self, parent_frame):
         """Tạo sidebar danh mục bên trong parent_frame."""
+        
+        # Thêm padding (20 bên trái, 10 bên phải)
         self.sidebar_frame = tk.Frame(parent_frame, bg="#FFF0E6", width=160, bd=1, relief="solid")
-        self.sidebar_frame.pack(side="left", fill="y", padx=(0, 10))
-        # Ngăn sidebar co lại
+        self.sidebar_frame.pack(side="left", fill="y", padx=(20, 10)) 
         self.sidebar_frame.pack_propagate(False) 
 
         tk.Label(
@@ -1023,14 +1020,20 @@ class POSPage(tk.Frame):
             bg="#8B0000", fg="white"
         ).pack(fill="x", pady=(0, 5), ipady=5)
 
+        self.category_buttons.clear()
+
         # Nút "Tất cả"
         btn_all = tk.Button(
             self.sidebar_frame, text="Tất cả sản phẩm", 
             font=("Times New Roman", 11, "bold"), 
-            bg="#A52A2A", fg="white", relief="flat", anchor="w",
-            command=self.load_products_list # Gọi lại hàm tải tất cả
+            relief="flat", anchor="w",
+            bg="#FFF0E6", fg="black"
+        )
+        btn_all.config(
+            command=lambda b=btn_all: (self._set_active_category_button(b), self.load_products_list())
         )
         btn_all.pack(fill="x", padx=5, pady=(5, 2))
+        self.category_buttons.append(btn_all)
 
         # Tải và hiển thị các danh mục từ DB
         try:
@@ -1039,14 +1042,19 @@ class POSPage(tk.Frame):
                 btn_cat = tk.Button(
                     self.sidebar_frame, text=cat_name, 
                     font=("Times New Roman", 11),
-                    relief="flat", bg="#FFF0E6", anchor="w",
-                    # Sử dụng lambda c=cat_name để truyền đúng tên category
-                    command=lambda c=cat_name: self.load_products_by_category(c)
+                    relief="flat", bg="#FFF0E6", anchor="w", fg="black"
+                )
+                btn_cat.config(
+                    command=lambda b=btn_cat, c=cat_name: (self._set_active_category_button(b), self.load_products_by_category(c))
                 )
                 btn_cat.pack(fill="x", padx=5, pady=1)
+                self.category_buttons.append(btn_cat)
         except Exception as e:
             print(f"Không thể tải danh mục: {e}")
             tk.Label(self.sidebar_frame, text="(Lỗi tải danh mục)", bg="#FFF0E6").pack()
+            
+        # Đặt nút "Tất cả" làm nút active mặc định
+        self._set_active_category_button(btn_all)
 
     def load_products_by_category(self, category_name):
         """Tải và hiển thị sản phẩm theo danh mục."""
@@ -1087,3 +1095,31 @@ class POSPage(tk.Frame):
         # 4. Đặt lại vị trí Scrollbar về đầu
         if hasattr(self, 'canvas'):
             self.canvas.yview_moveto(0)
+
+    # (Thêm hàm mới này vào bất cứ đâu bên trong Class POSPage)
+
+    def _set_active_category_button(self, active_button=None):
+        """
+        (Hàm trợ giúp mới) Đặt lại màu tất cả các nút danh mục 
+        và chỉ highlight nút đang hoạt động.
+        """
+        # Định nghĩa màu
+        ACTIVE_BG = "#A52A2A"  # Màu nền khi được chọn (màu đỏ đậm)
+        ACTIVE_FG = "white"    # Màu chữ khi được chọn
+        NORMAL_BG = "#FFF0E6"  # Màu nền bình thường
+        NORMAL_FG = "black"    # Màu chữ bình thường
+        
+        # 1. Reset tất cả các nút về bình thường
+        for button in self.category_buttons:
+            try:
+                button.config(bg=NORMAL_BG, fg=NORMAL_FG)
+            except tk.TclError:
+                # Nút có thể đã bị hủy, bỏ qua
+                pass
+        
+        # 2. Highlight nút được chọn (nếu có)
+        if active_button:
+            try:
+                active_button.config(bg=ACTIVE_BG, fg=ACTIVE_FG)
+            except tk.TclError:
+                pass # Bỏ qua nếu nút không còn tồn tại
