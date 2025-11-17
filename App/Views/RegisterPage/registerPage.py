@@ -1,8 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
-# Chỉ cần registerUser và checkUserNameExists
-from Database.dbUsers import registerUser, checkUserNameExists 
-import uuid
+from .registerLogic import check_unique_input, register_action
+
 
 class RegisterPage(tk.Frame):
     def __init__(self, parent, controller):
@@ -14,12 +13,12 @@ class RegisterPage(tk.Frame):
         tk.Label(
             self, text="🍇 ĐĂNG KÝ TÀI KHOẢN", 
             font=("Times New Roman", 24, "bold"), 
-            fg="#8B0000", # Màu đỏ rượu
+            fg="#8B0000",
             bg="#FFF8F0"
         ).pack(pady=20)
         
         # Khung nhập liệu (container chính cho các Label/Entry)
-        fields_frame = tk.Frame(self, bg="#FFF8F0") # Nền đồng bộ
+        fields_frame = tk.Frame(self, bg="#FFF8F0")
         fields_frame.pack(pady=10, padx=20) 
 
         self.fields = {}
@@ -39,7 +38,7 @@ class RegisterPage(tk.Frame):
                 label_column = 0
                 entry_column = 1
             else: # 3 trường sau
-                current_row = i - int(num_fields / 2) # Row 0, 1, 2
+                current_row = i - int(num_fields / 2)
                 label_column = 2
                 entry_column = 3
 
@@ -47,7 +46,7 @@ class RegisterPage(tk.Frame):
             tk.Label(
                 fields_frame, text=f"{label_text}:", 
                 font=("Times New Roman", 15),
-                fg="#5C2E0C", # Màu chữ nâu
+                fg="#5C2E0C",
                 bg="#FFF8F0"
             ).grid(
                 row=current_row, column=label_column, sticky="w", padx=(30, 5), pady=10
@@ -68,107 +67,62 @@ class RegisterPage(tk.Frame):
                     font=entry_font, relief="solid", bd=1
                 )
                 
-            # GẮN SỰ KIỆN: Kiểm tra duy nhất (Giữ nguyên)
+            # GẮN SỰ KIỆN: Kiểm tra duy nhất (Chuyển sang hàm mới)
             if key == "username":
-                entry.bind("<KeyRelease>", self.check_unique_input)
+                entry.bind("<KeyRelease>", self._check_unique_wrapper) # Gọi hàm wrapper
                 
             entry.grid(row=current_row, column=entry_column, padx=(5, 30), pady=10)
             self.fields[key] = entry
             
         # Khung chứa nút
-        buttons_frame = tk.Frame(self, bg="#FFF8F0") # Nền đồng bộ
+        buttons_frame = tk.Frame(self, bg="#FFF8F0")
         buttons_frame.pack(pady=20)
 
         # 5. --- NÚT ĐĂNG KÝ ĐỒNG BỘ ---
         tk.Button(
             buttons_frame, 
             text="Đăng ký", 
-            font=("Times New Roman", 15, "bold"), # Thêm bold
-            command=self.register_action, 
+            font=("Times New Roman", 15, "bold"),
+            command=self._register_wrapper, # Gọi hàm wrapper
             width=20,
-            bg="#A52A2A", # Màu nút nâu đỏ
+            bg="#A52A2A",
             fg="white",
-            relief="flat" # Đồng bộ
+            relief="flat"
         ).pack(pady=30)
         
         # 6. --- NÚT QUAY LẠI ĐỒNG BỘ (Style link) ---
         tk.Button(
             buttons_frame, 
             text="Quay lại Đăng nhập", 
-            font=("Times New Roman", 13, "underline"), # Thêm gạch chân
+            font=("Times New Roman", 13, "underline"),
             command=lambda: controller.show_frame("LoginPage"),
-            fg="#5C2E0C", # Màu chữ nâu
+            fg="#5C2E0C",
             bg="#FFF8F0",
             relief="flat", 
             borderwidth=0,
-            cursor="hand2" # Đổi con trỏ
+            cursor="hand2"
         ).pack(pady=10)
 
 
+    # ----------------------------------------------------------------------
+    # --- WRAPPER VÀ EVENT HANDLER (GỌI HÀM LOGIC) ---
+    # ----------------------------------------------------------------------
 
-#  LOGIC XỬ LÝ Ở DƯỚI ĐÂY  #
-
-        
-
-    # --- HÀM KIỂM TRA DUY NHẤT REAL-TIME (CHỈ CHO USERNAME) ---
-    def check_unique_input(self, event):
-        """Kiểm tra tính duy nhất của Tên đăng nhập ngay khi gõ."""
+    def _check_unique_wrapper(self, event):
+        """Wrapper gọi hàm check_unique_input từ file logic."""
         widget = event.widget
         input_value = widget.get()
+        # 💡 GỌI HÀM LOGIC ĐÃ TÁCH
+        check_unique_input(input_value, widget)
+
+    def _register_wrapper(self):
+        """Wrapper gọi hàm register_action từ file logic."""
+        # 💡 GỌI HÀM LOGIC ĐÃ TÁCH
+        register_action(self.controller, self.fields)
         
-        if not input_value:
-            widget.config(bg='white')
-            return
-
-        is_duplicate = False
-        
-        if checkUserNameExists(input_value):
-            is_duplicate = True
-        
-        if is_duplicate:
-            widget.config(bg='lightcoral') 
-        else:
-            widget.config(bg='white')
-
-    # --- HÀM XỬ LÝ ĐĂNG KÝ (FIXED) ---
-    def register_action(self):
-        data = {k: e.get() for k, e in self.fields.items()}
-        
-        # 1. KIỂM TRA ĐẦY ĐỦ THÔNG TIN
-        if not all(data.values()):
-            messagebox.showerror("Lỗi", "Vui lòng điền đầy đủ tất cả các trường.")
-            return
-
-        # 2. KIỂM TRA MẬT KHẨU KHỚP NHAU
-        if data['password'] != data['confirm_password']:
-            messagebox.showerror("Lỗi", "Mật khẩu nhập lại không khớp. Vui lòng kiểm tra lại.")
-            self.fields['password'].delete(0, tk.END)
-            self.fields['confirm_password'].delete(0, tk.END)
-            return
-
-        # 3. KIỂM TRA TÊN ĐĂNG NHẬP TRÙNG LẶP (Kiểm tra cuối cùng)
-        if self.fields['username'].cget('bg') == 'lightcoral':
-           messagebox.showerror("Lỗi", "Tên đăng nhập đã bị trùng. Vui lòng sửa lại.")
-           return
-
-        # 4. GỌI HÀM ĐĂNG KÝ
-        success, message = registerUser(
-            None,
-            data['username'], 
-            data['password'], 
-            data['fullname'], 
-            data['phone'], 
-            data['address']
-        )
-        
-        if success:
-            messagebox.showinfo("Thành công", message) 
-            self.controller.show_frame("LoginPage")
-        else:
-            messagebox.showerror("Lỗi", message)
-
     def on_show_frame(self):
         """Hàm này sẽ được controller gọi khi trang này được hiển thị."""
         # Đặt kích thước cửa sổ mong muốn (Rộng x Cao)
-        # Bạn có thể thử nghiệm các giá trị này, ví dụ: 450x550 hoặc 400x500
         self.controller.geometry("800x500")
+        # Focus vào trường username
+        self.fields['username'].focus_set()

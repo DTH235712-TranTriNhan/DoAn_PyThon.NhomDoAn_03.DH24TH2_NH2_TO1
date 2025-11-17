@@ -1,9 +1,9 @@
 import tkinter as tk
 import tkinter.ttk as ttk
-from App.Views.loginPage import LoginPage 
-from App.Views.registerPage import RegisterPage
-from App.Views.adminPage import AdminPage
-from App.Views.posPage import POSPage
+from App.Views.LoginPage.loginPage import LoginPage 
+from App.Views.RegisterPage.registerPage import RegisterPage
+from App.Views.AdminPage.adminPage import AdminPage
+from App.Views.PosPage.posPage import POSPage
 
 class SalesApp(tk.Tk):
     def __init__(self):
