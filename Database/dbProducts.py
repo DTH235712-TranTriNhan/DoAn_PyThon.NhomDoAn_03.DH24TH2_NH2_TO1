@@ -466,7 +466,6 @@ def searchProductsForPOS(keyword):
     cursor = conn.cursor()
 
     try:
-        # SỬA ĐỔI: Thêm "AND isActive = 1"
         sql_query = """
         SELECT SKU, name, category, price, stockQuantity, ImagePath, Description 
         FROM Products 
@@ -506,9 +505,6 @@ def searchProductsForPOS(keyword):
         if conn:
             conn.close()
     return products
-
-# thêm danh mục 
-# (THÊM VÀO CUỐI FILE dbProducts.py)
 
 def getAllCategories():
     """

@@ -3,7 +3,6 @@ from PIL import Image, ImageTk
 import os
 
 ROOT_DIR = os.getcwd()
-# Giả định cấu trúc thư mục của bạn
 BASE_IMAGE_DIR = os.path.normpath(os.path.join(ROOT_DIR, 'App', 'Images')) 
 
 # --- HẰNG SỐ CẤU HÌNH ---

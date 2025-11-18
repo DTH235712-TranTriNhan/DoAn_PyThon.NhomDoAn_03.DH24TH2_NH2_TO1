@@ -1,4 +1,3 @@
-# productImageUI.py
 import os
 from PIL import Image, ImageTk
 
