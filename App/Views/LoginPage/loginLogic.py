@@ -1,20 +1,16 @@
-# App\Views\LoginPage\loginLogic.py
-
 import tkinter as tk
 from tkinter import messagebox
-# Đảm bảo đường dẫn này đúng:
 from Database.dbUsers import checkLogin 
 
 def handle_login(controller, username, password, username_entry, password_entry):
     """
     Xử lý logic đăng nhập: gọi CSDL, kiểm tra, và điều hướng.
-    
     Tham số:
     - controller: Tham chiếu đến main controller để điều hướng frame.
     - username, password: Chuỗi tên đăng nhập và mật khẩu.
     - username_entry, password_entry: Tham chiếu đến Entry widget để xóa input và set focus.
     """
-    
+
     # 2. Kiểm tra rỗng
     if not username:
         messagebox.showwarning("Lỗi", "Vui lòng nhập tên đăng nhập.")
@@ -26,7 +22,7 @@ def handle_login(controller, username, password, username_entry, password_entry)
         password_entry.focus_set()
         return
         
-    # 3. GỌI HÀM KIỂM TRA CSDL (Giữ nguyên logic gốc của bạn)
+    # 3. GỌI HÀM KIỂM TRA CSDL
     try:
         user_id, role = checkLogin(username, password) 
     except Exception as e:

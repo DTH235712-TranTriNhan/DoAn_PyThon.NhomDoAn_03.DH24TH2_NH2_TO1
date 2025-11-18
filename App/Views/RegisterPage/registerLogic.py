@@ -1,10 +1,6 @@
-# App\Views\RegisterPage\registerLogic.py
-
 import tkinter as tk
 from tkinter import messagebox
-# Import các hàm CSDL cần thiết:
 from Database.dbUsers import registerUser, checkUserNameExists 
-import uuid # Giữ lại import này nếu bạn có ý định dùng uuid trong tương lai (logic gốc không dùng)
 
 def check_unique_input(input_value, username_entry):
     """
@@ -15,7 +11,7 @@ def check_unique_input(input_value, username_entry):
         username_entry.config(bg='white')
         return False
 
-    # 3. KIỂM TRA TÊN ĐĂNG NHẬP TRÙNG LẶP (Đồng bộ với logic gốc)
+    # 3. KIỂM TRA TÊN ĐĂNG NHẬP TRÙNG LẶP
     if checkUserNameExists(input_value):
         username_entry.config(bg='lightcoral') 
         return True
@@ -47,16 +43,14 @@ def register_action(controller, fields):
         fields['confirm_password'].delete(0, tk.END)
         return
 
-    # 3. KIỂM TRA TÊN ĐĂNG NHẬP TRÙNG LẶP (Dựa trên màu nền đã được check_unique_input cập nhật)
-    # Đây là logic bạn đã viết: kiểm tra màu nền
+    # 3. KIỂM TRA TÊN ĐĂNG NHẬP TRÙNG LẶP
     if fields['username'].cget('bg') == 'lightcoral':
        messagebox.showerror("Lỗi", "Tên đăng nhập đã bị trùng. Vui lòng sửa lại.")
        return
 
     # 4. GỌI HÀM ĐĂNG KÝ
-    # Giữ nguyên việc truyền None cho user_id (dù uuid.uuid4() có thể tốt hơn)
     success, message = registerUser(
-        None, # Giữ nguyên logic gốc của bạn
+        None,
         data['username'], 
         data['password'], 
         data['fullname'], 
@@ -66,11 +60,9 @@ def register_action(controller, fields):
     
     if success:
         messagebox.showinfo("Thành công", message) 
-        
         # Xóa hết các trường sau khi đăng ký thành công
         for entry in fields.values():
             entry.delete(0, tk.END)
-            
         # Điều hướng về trang đăng nhập
         controller.show_frame("LoginPage")
     else:

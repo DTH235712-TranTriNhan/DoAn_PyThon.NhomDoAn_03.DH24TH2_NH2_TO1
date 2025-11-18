@@ -9,7 +9,7 @@ def show_login_dialog_ui(self):
     try:
         self.controller.show_frame("LoginPage")
     except AttributeError:
-        messagebox.showinfo("Thông báo", "Chức năng đăng nhập/đăng xuất chưa được liên kết.")
+        self.show_error_toast("Chức năng đăng nhập/đăng xuất chưa được liên kết.")
 
 def show_user_info_dialog_ui(self):
     """Hiển thị thông tin người dùng hiện tại (khi click vào nhãn username)."""

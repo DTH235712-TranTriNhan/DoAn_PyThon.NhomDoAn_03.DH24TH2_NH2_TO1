@@ -2,32 +2,31 @@ import tkinter as tk
 from tkinter import messagebox
 from .registerLogic import check_unique_input, register_action
 
-
 class RegisterPage(tk.Frame):
     def __init__(self, parent, controller):
         # 1. --- THIẾT LẬP NỀN CHÍNH ---
         tk.Frame.__init__(self, parent, bg="#FFF8F0") 
         self.controller = controller
         
-        # --- (THÊM MỚI): KHUNG CHỨA TRUNG TÂM ---
+        # --- KHUNG CHỨA TRUNG TÂM ---
         # 1. Tạo một Frame cha để chứa TẤT CẢ mọi thứ
         main_container = tk.Frame(self, bg="#FFF8F0")
         
         # 2. Đặt khung cha này vào GIỮA (expand=True)
         main_container.pack(expand=True)
         # ----------------------------------------
-        
+
         # 2. --- TIÊU ĐỀ ĐỒNG BỘ ---
         tk.Label(
-            main_container, # <-- (THAY ĐỔI): Parent là main_container
+            main_container,
             text="🍇 ĐĂNG KÝ TÀI KHOẢN", 
             font=("Times New Roman", 24, "bold"), 
             fg="#8B0000",
             bg="#FFF8F0"
         ).pack(pady=20)
         
-        # Khung nhập liệu (container chính cho các Label/Entry)
-        fields_frame = tk.Frame(main_container, bg="#FFF8F0") # <-- (THAY ĐỔI): Parent là main_container
+        # Khung nhập liệu
+        fields_frame = tk.Frame(main_container, bg="#FFF8F0")
         fields_frame.pack(pady=10, padx=20) 
 
         self.fields = {}
@@ -36,7 +35,7 @@ class RegisterPage(tk.Frame):
         labels = ["Tên đăng nhập", "Mật khẩu", "Nhập lại Mật khẩu", "Họ và tên", "Điện thoại", "Địa chỉ"]
         keys = ["username", "password", "confirm_password", "fullname", "phone", "address"]
         
-        # --- LOGIC CHIA THÀNH 2 CỘT (Giữ nguyên) ---
+        # --- LOGIC CHIA THÀNH 2 CỘT ---
         num_fields = len(keys) 
         
         for i, (label_text, key) in enumerate(zip(labels, keys)):
@@ -82,7 +81,7 @@ class RegisterPage(tk.Frame):
             self.fields[key] = entry
             
         # Khung chứa nút
-        buttons_frame = tk.Frame(main_container, bg="#FFF8F0") # <-- (THAY ĐỔI): Parent là main_container
+        buttons_frame = tk.Frame(main_container, bg="#FFF8F0")
         buttons_frame.pack(pady=20)
 
         # 5. --- NÚT ĐĂNG KÝ ĐỒNG BỘ ---
@@ -118,12 +117,10 @@ class RegisterPage(tk.Frame):
         """Wrapper gọi hàm check_unique_input từ file logic."""
         widget = event.widget
         input_value = widget.get()
-        # 💡 GỌI HÀM LOGIC ĐÃ TÁCH
         check_unique_input(input_value, widget)
 
     def _register_wrapper(self):
         """Wrapper gọi hàm register_action từ file logic."""
-        # 💡 GỌI HÀM LOGIC ĐÃ TÁCH
         register_action(self.controller, self.fields)
         
     def on_show_frame(self):

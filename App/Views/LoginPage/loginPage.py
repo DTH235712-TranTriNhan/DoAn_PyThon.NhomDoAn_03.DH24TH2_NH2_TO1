@@ -1,13 +1,6 @@
-# App\Views\LoginPage\loginPage.py
-
 import tkinter as tk
 from tkinter import messagebox
-# Bỏ import checkLogin vì đã chuyển sang loginLogic
-# from Database.dbUsers import checkLogin 
-
-# 💡 IMPORT LOGIC MỚI
 from .loginLogic import handle_login 
-
 
 class LoginPage(tk.Frame):
     """Giao diện Đăng nhập với thiết kế đồng bộ RubyOak."""
@@ -16,8 +9,7 @@ class LoginPage(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.controller = controller
         
-        # --- 1. THIẾT KẾ GIAO DIỆN (GIỮ NGUYÊN) ---
-        
+        # --- 1. THIẾT KẾ GIAO DIỆN ---
         # Đặt màu nền cho Frame chính
         self.config(bg="#FFF8F0")
 
@@ -75,7 +67,7 @@ class LoginPage(tk.Frame):
             pady=5
         ).pack(pady=20)
         
-        # Nút Đăng ký (Style như link)
+        # Nút Đăng ký
         tk.Button(
             main_frame, text="Đăng ký tài khoản mới", 
             font=("Times New Roman", 11, "underline"),
@@ -91,11 +83,6 @@ class LoginPage(tk.Frame):
         self.username_entry.bind("<Return>", self._login_on_enter)
         self.password_entry.bind("<Return>", self._login_on_enter)
 
-
-    # ----------------------------------------------------------------------
-    # --- LOGIC CŨ ĐÃ ĐƯỢC THAY THẾ BẰNG LỆNH GỌI HÀM LOGIC MỚI ---
-    # ----------------------------------------------------------------------
-
     def _login_on_enter(self, event=None):
         """Hàm hỗ trợ gọi đăng nhập khi nhấn Enter."""
         self._login_action()
@@ -105,8 +92,7 @@ class LoginPage(tk.Frame):
         
         username = self.username_entry.get()
         password = self.password_entry.get()
-        
-        # 💡 GỌI HÀM LOGIC ĐÃ TÁCH
+
         handle_login(
             self.controller, 
             username, 
