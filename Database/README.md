@@ -1,35 +1,47 @@
-🛠️ Hướng Dẫn Thiết Lập Cơ Sở Dữ Liệu (SQL Server)
+# 🛠️ HƯỚNG DẪN THIẾT LẬP CƠ SỞ DỮ LIỆU (SQL SERVER)
+
 File này hướng dẫn cách tạo database và các bảng cần thiết để ứng dụng Python hoạt động.
 
-1. Yêu Cầu Thiết Lập
+---
+
+## 1. YÊU CẦU THIẾT LẬP
 ```
 SQL Server: Đã cài đặt SQL Server và SQL Server Management Studio (SSMS).
 
-Tên Server: Đảm bảo bạn biết tên Server của mình (ví dụ: LAPTOP-L0M5...\SQLEXPRESS).
+Tên Server: Đảm bảo bạn biết tên Server của mình (ví dụ: LAPTOP-XXXX\SQLEXPRESS).
 
-chạy lệnh này để kết nối Vscode với sql service:
+Chạy lệnh này để cài thư viện kết nối VSCode với SQL Server:
 ```
+
 ```
 pip install pyodbc
 pip install Pillow
 ```
-2. Các Bước Tạo Database
+
+---
+
+## 2. CÁC BƯỚC TẠO DATABASE
 ```
-Mở SQL Server Management Studio (SSMS), tạo một cửa sổ New Query, và chạy toàn bộ các lệnh SQL dưới đây theo thứ tự:
+Mở SQL Server Management Studio (SSMS), tạo một cửa sổ New Query, và chạy toàn bộ các lệnh dưới đây theo thứ tự:
 ```
-A. Tạo Database và Chọn Ngữ cảnh
+
+### A. Tạo Database và chuyển ngữ cảnh
 ```sql
 -- Tên Database (Dùng CamelCase: salesProjectDB)
 CREATE DATABASE salesProjectDB;
 GO 
+
 USE salesProjectDB;
 GO
 ```
 
-B. Tạo Bảng Cấu trúc (4 Bảng)
-1. Bảng Users (Người dùng & Phân quyền)
+---
+
+## B. Tạo Bảng Cấu Trúc (4 bảng)
+
+### 1. Bảng Users (Người dùng & Phân quyền)
 ```sql
--- Sử dụng IDENTITY cho ID tự động tăng và NVARCHAR cho tiếng Việt có dấu.
+-- Sử dụng NVARCHAR cho tiếng Việt và CHECK cho phân quyền.
 CREATE TABLE Users (
     userID VARCHAR(50) PRIMARY KEY,
     userName VARCHAR(50) UNIQUE NOT NULL, 
@@ -42,7 +54,8 @@ CREATE TABLE Users (
     CONSTRAINT CHK_UserRole CHECK (userRole IN ('Admin', 'User', 'Guest'))
 );
 ```
-2. Bảng Products (Hàng hóa & Tồn kho)
+
+### 2. Bảng Products (Hàng hóa & Tồn kho)
 ```sql
 CREATE TABLE Products (
     SKU VARCHAR(50) PRIMARY KEY,
@@ -55,59 +68,77 @@ CREATE TABLE Products (
     isActive BIT NOT NULL DEFAULT 1
 );
 ```
-3. Bảng Orders (Đơn hàng/Hóa đơn)
+
+### 3. Bảng Orders (Đơn hàng)
 ```sql
 CREATE TABLE Orders (
     orderID INT IDENTITY(1,1) PRIMARY KEY,
-    userID VARCHAR(50),                     -- Khóa ngoại phải khớp với Users.userID (VARCHAR)
+    userID VARCHAR(50),
     orderDate DATETIME NOT NULL DEFAULT GETDATE(),
     totalAmount DECIMAL(18, 0) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'Completed',
-    FOREIGN KEY (userID) REFERENCES Users(userID) -- Khóa ngoại trỏ đến Users.userID mới
+
+    FOREIGN KEY (userID) REFERENCES Users(userID)
 );
 ```
-4. Bảng OrderItems (Chi tiết Đơn hàng)
+
+### 4. Bảng OrderItems (Chi tiết đơn hàng)
 ```sql
 CREATE TABLE OrderItems (
     itemID INT IDENTITY(1,1) PRIMARY KEY,
-    orderID INT NOT NULL,   
-    SKU VARCHAR(50) NOT NULL,      -- Tự nhập (Mã sản phẩm)
+    orderID INT NOT NULL,
+    SKU VARCHAR(50) NOT NULL,
     quantity INT NOT NULL,
     unitPrice DECIMAL(18, 0) NOT NULL,
+
     FOREIGN KEY (orderID) REFERENCES Orders(orderID),
     FOREIGN KEY (SKU) REFERENCES Products(SKU)
 );
 ```
-C. Dữ liệu Khởi tạo (Mặc định)
+
+---
+
+## C. DỮ LIỆU KHỞI TẠO (ADMIN & GUEST)
 ```sql
--- Chèn tài khoản Admin và Guest để kiểm tra đăng nhập.
--- Chèn tài khoản Admin và Guest.
 INSERT INTO Users (userID, userName, password, fullName, userRole) VALUES
 ('AD001', 'admin', '123', N'Quản trị viên Hệ thống', 'Admin'),
 ('GT001', 'guest', '123', N'Khách Vãng Lai', 'Guest');
 ```
-3. Cấu Hình Kết Nối Python
-```sql
--- Sau khi tạo Database, bạn phải kiểm tra và sửa đổi tên Server trong file Database/dbConnector.py:
-# Mở file databaseManager.py và sửa dòng này:
-# Lưu ý: Phải thêm chữ 'r' để tránh lỗi cú pháp \ trong Python
+
+---
+
+## 3. CẤU HÌNH KẾT NỐI PYTHON
+
+Trong file `dbConnector.py` hoặc `databaseManager.py`, sửa:
+```python
+# Lưu ý: Thêm chữ r'' để tránh lỗi escape ký tự \
 SERVER_NAME = r'TEN_SERVER_CUA_BAN\SQLEXPRESS'
 ```
 
+---
 
-Trường hợp 2: SQL Server Authentication (Cần Tên/Mật khẩu SQL)
-```sql
--- Cách Sửa trong Database/dbConnector.py (Dành cho người dùng khác):
+## Trường hợp 2: SQL Server Authentication (Dùng user + password SQL)
+
+```python
+# Cách sửa trong dbConnector.py
 def checkLogin(username, password):
-    # !!! NGƯỜI DÙNG CẦN SỬA DÒNG NÀY !!!
-    # Thay getDbConnection() bằng cách truyền user và password CSDL của họ
-    # Ví dụ: user="sa", password="matkhaucuasa"
-    
-    # ⚠️ THAY DÒNG DƯỚI ĐÂY:
-    conn = getDbConnection(user="TÊN_SQL_USER", password="MẬT_KHẨU_SQL") 
-    
-    # ... logic truy vấn ...
-    # ...
 
--- Lưu ý: Nếu người dùng của bạn chọn Chế độ SQL Server Authentication, họ phải đảm bảo rằng server đã được cấu hình sang Mixed Mode và giao thức TCP/IP đã được bật.
+    # !!! NGƯỜI DÙNG CẦN SỬA DÒNG NÀY !!!
+    # Ví dụ: user="sa", password="matkhaucuaban"
+    conn = getDbConnection(
+        user="TEN_SQL_USER",
+        password="MAT_KHAU_SQL"
+    )
+
+    # ... logic truy vấn ...
 ```
+
+```
+Lưu ý:
+- Nếu dùng SQL Authentication, bạn phải bật Mixed Mode trong SQL Server.
+- Bật giao thức TCP/IP trong SQL Server Configuration Manager.
+```
+
+---
+
+✔️ Mọi thứ đã sẵn sàng để chạy dự án Python kết nối SQL Server!
