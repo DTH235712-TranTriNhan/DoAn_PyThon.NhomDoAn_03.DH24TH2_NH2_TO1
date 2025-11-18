@@ -77,7 +77,14 @@ def show_next_products_ui(self):
     start = self.display_index
     end = start + 6
     display_items = self.products[start:end]
-    cols = 3
+    total_products = len(self.products)
+    
+    if total_products == 1:
+        cols = 1  # 1 sản phẩm -> 1 cột (chiếm hết chiều ngang)
+    elif total_products == 2:
+        cols = 2  # 2 sản phẩm -> 2 cột (chia đôi)
+    else:
+        cols = 3  # 3 sản phẩm trở lên -> 3 cột
 
     label_exists = hasattr(self, 'no_products_label') and self.no_products_label.winfo_exists()
 
@@ -96,6 +103,12 @@ def show_next_products_ui(self):
     if start == 0:
         for widget in self.grid_frame.winfo_children():
             widget.destroy()
+
+        for i in range(5): 
+            self.grid_frame.grid_columnconfigure(i, weight=0)
+            
+        for i in range(cols):
+            self.grid_frame.grid_columnconfigure(i, weight=1)
 
     row_offset = start // cols
 

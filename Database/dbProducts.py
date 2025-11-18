@@ -225,7 +225,7 @@ def addProduct(sku, name, category, price, stock, imagePath=None, description=No
                 VALUES (?, ?, ?, ?, ?, ?, ?) 
             """
             cursor.execute(sql_insert, (sku, name, category, price, stock, imagePath, description))
-            message = f"Đã thêm sản phẩm mới (SKU: {sku})."
+            message = f"Đã thêm sản phẩm mới."
 
         conn.commit()
         return True, message

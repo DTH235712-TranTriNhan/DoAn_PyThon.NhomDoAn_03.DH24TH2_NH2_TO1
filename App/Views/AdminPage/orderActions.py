@@ -11,7 +11,6 @@ class OrderActionsMixin:
 
         orders = getAllOrdersForAdmin()
         if not orders:
-            messagebox.showinfo("Thông báo", "Hiện chưa có đơn hàng nào.")
             return
 
         for order in orders:
