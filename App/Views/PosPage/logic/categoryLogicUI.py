@@ -13,7 +13,6 @@ def load_products_by_category_ui(self, category_name):
         try:
             self.products = getProductsByCategoryForPOS(category_name) or []
         except Exception as e:
-            # if DB function not available, fallback to mock
             print("Warning: getProductsByCategoryForPOS error:", e)
             self.products = []
     except Exception as e:

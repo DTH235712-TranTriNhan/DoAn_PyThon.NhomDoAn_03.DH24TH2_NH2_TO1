@@ -84,7 +84,7 @@ class POSPage(tk.Frame):
         load_products_list_ui(self)
 
     # ===========================================================
-    # PROPERTY GIỮ NGUYÊN
+    # PROPERTY
     @property
     def is_logged_in(self):
         return self.current_user and 'id' in self.current_user

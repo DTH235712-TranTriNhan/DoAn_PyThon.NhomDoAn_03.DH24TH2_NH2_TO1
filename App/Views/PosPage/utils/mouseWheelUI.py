@@ -1,5 +1,3 @@
-# mouseWheelUI.py
-
 def on_canvas_mousewheel_ui(self, event):
     if event.delta:
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")

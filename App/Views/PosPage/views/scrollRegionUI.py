@@ -1,5 +1,3 @@
-# scrollRegionUI.py
-
 def update_scroll_region_ui(self, event=None):
     self.canvas.update_idletasks()  
     bbox = self.canvas.bbox("all")
