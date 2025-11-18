@@ -40,7 +40,7 @@ from App.Views.PosPage.logic.accountUI import (
     show_login_dialog_ui, show_user_info_dialog_ui,
     logout_ui, update_user_status_ui
 )
-from App.Views.PosPage.views.sidebarUI import create_category_sidebar_ui
+from App.Views.PosPage.views.sidebarUI import create_category_sidebar_ui, refresh_category_sidebar_ui
 from App.Views.PosPage.logic.categoryLogicUI import (
     load_products_by_category_ui, set_active_category_button_ui
 )
@@ -144,7 +144,7 @@ class POSPage(tk.Frame):
             pass
 
         try:
-            self.load_products()
-            self.load_orders_admin()
+            self.load_products_list()
+            refresh_category_sidebar_ui(self)
         except:
             pass
