@@ -211,7 +211,7 @@ def addProduct(sku, name, category, price, stock, imagePath=None, description=No
                 WHERE SKU = ? 
             """
             cursor.execute(sql_update, (category, price, new_stock, imagePath, description, product_sku_old))
-            message = f"Sản phẩm '{name}' (SKU: {product_sku_old}) đã có. Đã cộng dồn {stock} đơn vị. Tồn kho mới: {new_stock}."
+            message = f"Sản phẩm '{name}' đã có. Vì thế đã cộng dồn {stock} đơn vị. Tồn kho mới: {new_stock}."
             
         else:
             # Tên mới: PHẢI kiểm tra SKU đã tồn tại chưa
