@@ -1,1180 +1,150 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from PIL import Image, ImageTk 
+from PIL import Image, ImageTk
 import os
 
-from App.Views.PosPage.ProductCard import ProductCard
+from App.Views.ProductCard.ProductCard import ProductCard
 from Database.dbOrders import createOrder, format_currency
-from Database.dbProducts import getProductsForPOS, searchProductsForPOS, getAllCategories, getProductsByCategoryForPOS
-# Giả định ProductCard, dbProducts, dbOrders, format_currency được import và hoạt động đúng
+from Database.dbProducts import (
+    getProductsForPOS, searchProductsForPOS,
+    getAllCategories, getProductsByCategoryForPOS
+)
 
-# Import từ ProductCard để đảm bảo đường dẫn ảnh đúng
+# Import UI đã tách
+from App.Views.PosPage.views.headerUI import create_header_ui
+from App.Views.PosPage.views.searchBarUI import create_search_bar_ui
+from App.Views.PosPage.views.toastUI import create_toast_manager_ui
+from App.Views.PosPage.products.productGridUI import (
+    create_product_grid_ui,
+    on_canvas_resize_ui,
+    load_products_list_ui,
+    show_next_products_ui
+)
+from App.Views.PosPage.logic.searchLogicUI import load_more_products_ui, perform_search_ui, bind_children_mousewheel_ui
+from App.Views.PosPage.products.productDetailUI import open_product_detail_ui
+from App.Views.PosPage.cart.buyCartManagerUI import add_to_cart_from_detail_ui, process_buy_now_ui, clear_current_toast_ui
+
+from App.Views.PosPage.cart.addToCartUI import add_to_cart_ui
+from App.Views.PosPage.logic.toastActionsUI import (
+    run_toast_animation_ui, show_error_toast_ui,
+    show_toast_ui, update_cart_badge_ui
+)
+from App.Views.PosPage.cart.cartUI import (
+    show_cart_window_ui, populate_cart_tree_ui,
+    handle_cart_click_ui, remove_from_cart_ui,
+    process_checkout_ui
+)
+
+from App.Views.PosPage.views.footerUI import create_footer_ui
+from App.Views.PosPage.logic.accountUI import (
+    show_login_dialog_ui, show_user_info_dialog_ui,
+    logout_ui, update_user_status_ui
+)
+from App.Views.PosPage.views.sidebarUI import create_category_sidebar_ui
+from App.Views.PosPage.logic.categoryLogicUI import (
+    load_products_by_category_ui, set_active_category_button_ui
+)
+from App.Views.PosPage.products.productDisplayUI import display_product_list_ui
+from App.Views.PosPage.views.scrollRegionUI import update_scroll_region_ui
+from .utils.mouseWheelUI import on_canvas_mousewheel_ui
+from .products.productImageUI import (
+    get_absolute_image_path_ui,
+    load_image_for_modal_ui
+)
+
+
 ROOT_DIR = os.getcwd()
 BASE_IMAGE_DIR = os.path.normpath(os.path.join(ROOT_DIR, 'App', 'Images'))
+MODAL_IMAGE_SIZE = (200, 200)
 
-# --- THÔNG SỐ CỐ ĐỊNH CHIỀU CAO CHO ẢNH TRONG MODAL ---
-MODAL_IMAGE_SIZE = (200, 200) 
-# --------------------------------------------------------
 
 class POSPage(tk.Frame):
-    """Giao diện Điểm Bán Hàng (Point of Sale) chính."""
+    """Giao diện Điểm Bán Hàng (POS) chính."""
+
     def __init__(self, parent, controller):
         super().__init__(parent, bg="#FFF8F0")
         self.controller = controller
 
-        # Dữ liệu
+        # BIẾN TRẠNG THÁI
         self.current_user = None
         self.cart_items = {}
         self.products = []
         self.display_index = 0
         self.photo_modal = None
-        self.current_toast = None 
-        self.toast_id = None 
-
-        # --- THÊM MỚI: ĐỂ LƯU CÁC NÚT DANH MỤC ---
-        self.category_buttons = [] # Dùng để quản lý highlight
-
-        # 1. GỌI FOOTER TRƯỚC VỚI side="bottom"
-        self.create_footer()
-
-        # 2. GỌI HEADER
-        self.create_header()
-
-        # 3. GỌI TOAST MANAGER (không hiển thị)
-        self.create_toast_manager() 
-
-        # 4. GỌI PRODUCT GRID (quan trọng)
-        #    (Hàm này BÂY GIỜ cũng sẽ gọi create_search_bar)
-        self.create_product_grid() 
-
-        # 5. Tải sản phẩm
-        self.load_products_list()
-
-    # --- FIX 2: PROPERTY KIỂM TRA ĐĂNG NHẬP ---
-    @property
-    def is_logged_in(self):
-        """Kiểm tra xem người dùng hiện tại có hợp lệ không."""
-        return self.current_user and 'id' in self.current_user
-
-    # ------------------ HEADER ------------------
-    def create_header(self):
-        header = tk.Frame(self, bg="#8B0000", height=60)
-        header.pack(fill="x")
-
-        tk.Label(
-            header, text="🍇 RubyOak POS",
-            bg="#8B0000", fg="white",
-            font=("Times New Roman", 20, "bold")
-        ).pack(side="left", padx=20)
-
-        self.login_button = tk.Button(
-            header, text="Đăng nhập", bg="#E53935", fg="white",
-            font=("Times New Roman", 12, "bold"),
-            relief="flat", command=self.show_login_dialog
-        )
-        self.login_button.pack(side="right", padx=10, pady=10)
-
-        self.user_label = tk.Label(header, text="Chưa đăng nhập", bg="#8B0000", fg="#FFCDD2")
-        self.user_label.pack(side="right", padx=10)
-        
-        self.user_label.bind("<Button-1>", lambda e: self.show_user_info_dialog())
-        self.user_label.config(cursor="hand2")
-
-        self.cart_btn = tk.Button(
-            header, text="🛒 Giỏ hàng (0)", bg="#A52A2A", fg="white",
-            font=("Times New Roman", 12, "bold"),
-            relief="flat", command=self.show_cart_window
-        )
-        self.cart_btn.pack(side="right", padx=10, pady=10)
-
-    # ------------------ THANH TÌM KIẾM (MỚI) ------------------
-    def create_search_bar(self, parent):
-        """Tạo thanh tìm kiếm và nút reset (BÊN TRONG KHUNG CHA)."""
-        search_frame = tk.Frame(parent, bg="#FFF8F0", pady=5)
-        search_frame.pack(fill="x") 
-
-        # --- BỐ CỤC: PACK TỪ PHẢI SANG TRÁI ---
-
-        # 1. Pack nút "Đặt lại" sang BÊN PHẢI (đầu tiên)
-        reset_btn = tk.Button(
-            search_frame, text="♻️ Đặt lại", 
-            bg="#B0BEC5", fg="#263238", # Giữ màu xám cho đẹp
-            font=("Times New Roman", 11, "bold"),
-            relief="flat", cursor="hand2",
-            command=lambda: (
-                self._set_active_category_button(self.category_buttons[0] if self.category_buttons else None), 
-                self.load_products_list()
-            )
-        )
-        reset_btn.pack(side="right", padx=(0, 5)) # Đặt padding bên phải
-
-        # 2. Pack nút "Tìm" sang BÊN PHẢI (thứ hai)
-        search_btn = tk.Button(
-            search_frame, text="🔍 Tìm", 
-            bg="#A52A2A", fg="white", 
-            font=("Times New Roman", 11, "bold"),
-            relief="flat", cursor="hand2",
-            command=self.perform_search
-        )
-        search_btn.pack(side="right", padx=5)
-
-        # 3. Pack ô Entry sang BÊN PHẢI (cuối cùng)
-        self.search_entry = ttk.Entry(
-            search_frame, 
-            font=("Times New Roman", 12),
-            width=34  # <-- "Ngắn"
-        )
-        self.search_entry.pack(
-            side="right",  # <-- Pack sang PHẢI
-            fill="none",   # <-- KHÔNG fill
-            expand=False,  # <-- KHÔNG expand
-            padx=(0, 5), 
-            ipady=2
-        )
-        
-        # 4. Bind phím Enter (CHỈ MỘT LẦN)
-        self.search_entry.bind("<Return>", self.perform_search)
-    
-    # ------------------ KHU VỰC TOAST RIÊNG ------------------
-    def create_toast_manager(self):
-        """Tạo/chuẩn bị 1 Toplevel nhỏ để hiển thị toast (reusable)."""
-        # Nếu đã tạo thì bỏ qua
-        if getattr(self, "toast_win", None) and self.toast_win.winfo_exists():
-            return
-
-        # Toplevel không viền, luôn topmost, ẩn ban đầu
-        self.toast_win = tk.Toplevel(self)
-        self.toast_win.overrideredirect(True)
-        self.toast_win.attributes("-topmost", True)
-        # Không cho tương tác chuột (tùy OS — nếu gây lỗi thì comment dòng dưới)
-        try:
-            self.toast_win.attributes("-transparentcolor", "pink")  # optional visual tweak on some systems
-        except Exception:
-            pass
-
-        # Nội dung: label nhỏ, margin, rounded-ish via border
-        self.toast_label = tk.Label(
-            self.toast_win,
-            text="",
-            bg="#4CAF50",
-            fg="white",
-            font=("Arial", 10, "bold"),
-            padx=12, pady=6,
-            bd=0, relief="flat",
-            wraplength=400, justify="center"
-        )
-        self.toast_label.pack()
-
-        # Ẩn window ban đầu
-        self.toast_win.withdraw()
         self.current_toast = None
         self.toast_id = None
-
-    # ------------------ GRID SẢN PHẨM ------------------
-    def create_product_grid(self):
-        # Frame chứa cả Sidebar và Canvas
-        # Bỏ padx=20 ở đây
-        self.main_content_area = tk.Frame(self, bg="#FFF8F0") 
-        self.main_content_area.pack(fill="both", expand=True, padx=0, pady=0) 
-
-        # 1. TẠO SIDEBAR DANH MỤC (BÊN TRÁI)
-        #    (Hàm create_category_sidebar sẽ tự xử lý padding)
-        self.create_category_sidebar(self.main_content_area)
-
-        # 2. TẠO KHUNG BÊN PHẢI (SẼ CHỨA TÌM KIẾM, CANVAS, "XEM THÊM")
-        right_content_frame = tk.Frame(self.main_content_area, bg="#FFF8F0")
-        # Thêm padding (khoảng cách) cho khung bên phải
-        right_content_frame.pack(side="left", fill="both", expand=True, padx=(0, 20))
-
-        # 3. GỌI THANH TÌM KIẾM (BÊN TRONG right_content_frame)
-        #    Nó sẽ pack() ở trên cùng của khung bên phải
-        self.create_search_bar(right_content_frame) # <-- GỌI HÀM TẠI ĐÂY
-
-        # 4. TẠO KHUNG CON CHO CANVAS + SCROLLBAR
-        canvas_scroll_frame = tk.Frame(right_content_frame, bg="#FFF8F0")
-        canvas_scroll_frame.pack(fill="both", expand=True)
-
-        # 5. Canvas và Scrollbar
-        self.canvas = tk.Canvas(canvas_scroll_frame, bg="#FFF8F0", highlightthickness=0)
-        self.canvas.pack(side="left", fill="both", expand=True) 
-
-        self.v_scroll = ttk.Scrollbar(canvas_scroll_frame, orient="vertical", command=self.canvas.yview)
-        self.v_scroll.pack(side="right", fill="y")
-        self.canvas.configure(yscrollcommand=self.v_scroll.set)
-
-        # 6. self.grid_frame (Bên trong Canvas)
-        self.grid_frame = tk.Frame(self.canvas, bg="#FFF8F0")
-        self.canvas_window = self.canvas.create_window((0, 0), window=self.grid_frame, anchor="nw")
-        # --- THÊM MỚI: Thêm 10px đệm xung quanh lưới card ---
-        self.grid_frame.config(padx=10)
-
-        # 7. Label "Không có sản phẩm"
-        self.no_products_label = tk.Label(
-            self.grid_frame, text="Không có sản phẩm nào để hiển thị.", 
-            bg="#FFF8F0", fg="#5C2E0C", font=("Times New Roman", 14)
-        )
-
-        # Ràng buộc sự kiện
-        self.canvas.bind('<Configure>', self.on_canvas_resize) 
-        self.grid_frame.bind('<Configure>', self._update_scroll_region)
-        self.canvas.bind('<Configure>', self._update_scroll_region, add='+')
-
-        # 8. Nút Xem thêm (Parent là right_content_frame)
-        self.more_btn = tk.Button(
-            right_content_frame, # Parent là right_content_frame
-            text="Xem thêm sản phẩm",
-            bg="#A52A2A", fg="white",
-            font=("Times New Roman", 12, "bold"),
-            command=self.load_more_products
-        )
-        self.canvas.bind_all("<MouseWheel>", self._on_canvas_mousewheel)
-        self.canvas.bind_all("<Button-4>", self._on_canvas_mousewheel)
-        self.canvas.bind_all("<Button-5>", self._on_canvas_mousewheel)
-
-    def on_canvas_resize(self, event):
-        """Cập nhật chiều rộng của Canvas Window để khớp với Canvas."""
-        self.canvas.itemconfig(self.canvas_window, width=event.width)
-        self._update_scroll_region() # Cập nhật vùng cuộn khi Canvas thay đổi kích thước
-
-    def load_products_list(self):
-        """Tải và làm mới danh sách sản phẩm."""
-        if hasattr(self, 'search_entry'):
-            self.search_entry.delete(0, tk.END)
-        try:
-            # SỬ DỤNG MOCK DATA NẾU KHÔNG CÓ DB ĐỂ TRÁNH LỖI IMPORT
-            try:
-                self.products = getProductsForPOS() or [] 
-            except NameError:
-                print("Warning: Using Mock Data. Ensure Database imports are correct.")
-                self.products = [
-                    {"sku": "SKU001", "name": "Vang Đỏ Cabernet", "price": 500000.0, "price_str": "500.000 đ", "stock": 10, "imagePath": "wine1.jpg"},
-                    {"sku": "SKU002", "name": "Vang Trắng Chardonnay", "price": 450000.0, "price_str": "450.000 đ", "stock": 5, "imagePath": "wine2.jpg"},
-                    {"sku": "SKU003", "name": "Vang Nổ Sparkling", "price": 600000.0, "price_str": "600.000 đ", "stock": 0, "imagePath": "wine3.jpg"},
-                    {"sku": "SKU004", "name": "Rượu Sake Nhật", "price": 800000.0, "price_str": "800.000 đ", "stock": 15, "imagePath": "wine4.jpg"},
-                ]
-        except Exception as e:
-            messagebox.showerror("Lỗi CSDL", f"Không thể tải sản phẩm: {e}")
-            self.products = []
-            
-        self._display_product_list()
-
-
-    def show_next_products(self):
-        """Hiển thị 6 sản phẩm mỗi lần, nối tiếp sản phẩm đã có."""
-        start = self.display_index
-        end = start + 6
-        display_items = self.products[start:end]
-        cols = 3
-
-        # Kiểm tra sự tồn tại của Label thông báo (để tránh TclError)
-        label_exists = hasattr(self, 'no_products_label') and self.no_products_label.winfo_exists()
-
-        # Trường hợp 1: Danh sách sản phẩm TỔNG THỂ trống.
-        if not self.products:
-            self.more_btn.pack_forget() 
-            if label_exists:
-                # Sử dụng place() để căn giữa trong product_area
-                self.no_products_label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-            # Quan trọng: Cần cập nhật vùng cuộn và ẩn Scrollbar khi không có sản phẩm.
-            self.grid_frame.update_idletasks()
-            self._update_scroll_region() 
-            return
-
-        # Ẩn thông báo "Không có sản phẩm" nếu đã có sản phẩm
-        if label_exists:
-            self.no_products_label.place_forget() 
-
-        if start == 0:
-            # Làm sạch grid_frame
-            for widget in self.grid_frame.winfo_children():
-                widget.destroy()
-
-        # Tính toán row offset (hàng bắt đầu) để sản phẩm mới nối tiếp sản phẩm cũ
-        row_offset = start // cols 
-
-        for i, prod_data in enumerate(display_items):
-            try:
-                # Giả định ProductCard đã được import
-                card = ProductCard(self.grid_frame, prod_data, self.open_product_detail)
-            except NameError:
-                # Fallback: Dùng Label đơn giản
-                card = tk.Label(self.grid_frame, text=f"{prod_data.get('name')}\n{prod_data.get('price_str')}", bd=1, relief="solid", padx=10, pady=10)
-                card.bind("<Button-1>", lambda e, p=prod_data: self.open_product_detail(p))
-            
-            r, c = divmod(i, cols) 
-            card.grid(row=r + row_offset, column=c, padx=5, pady=5, sticky="nsew") 
-            
-            # RÀNG BUỘC SỰ KIỆN CUỘN
-            self._bind_children_mousewheel(card) 
-
-            if start == 0:
-                self.grid_frame.grid_columnconfigure(c, weight=1) 
-
-        # Cần ràng buộc lại scrollregion sau khi thêm widget
-        self.grid_frame.update_idletasks()
-        self.canvas.config(scrollregion = self.canvas.bbox("all"))
-        
-        # <<< BƯỚC QUAN TRỌNG: CẬP NHẬT ẨN/HIỆN SCROLLBAR >>>
-        self._update_scroll_region()
-        # ---------------------------------------------------
-        
-        # --- ĐIỀU CHỈNH HIỂN THỊ NÚT "XEM THÊM" ---
-        if end < len(self.products):
-            self.more_btn.config(state=tk.NORMAL, text="Xem thêm sản phẩm")
-            self.more_btn.pack(pady=(0, 10))
-        else:
-            self.more_btn.pack_forget()
-
-
-    def load_more_products(self):
-        self.display_index += 6
-        self.show_next_products()
-
-    def perform_search(self, event=None):
-        """Lấy keyword, gọi DB và hiển thị kết quả tìm kiếm."""
-        keyword = self.search_entry.get().strip()
-        if not keyword:
-            self.show_error_toast("Vui lòng nhập tên hoặc SKU để tìm.")
-            return
-
-        # --- THÊM MỚI: Bỏ highlight tất cả các nút danh mục ---
-        self._set_active_category_button(None) 
-        # ----------------------------------------------------
-
-        try:
-            try:
-                self.products = searchProductsForPOS(keyword) or []
-            except NameError:
-                print("Warning: Using Mock Data for Search.")
-                all_products = [
-                    {"sku": "SKU001", "name": "Vang Đỏ Cabernet", "price": 500000.0, "price_str": "500.000 đ", "stock": 10, "imagePath": "wine1.jpg"},
-                    {"sku": "SKU002", "name": "Vang Trắng Chardonnay", "price": 450000.0, "price_str": "450.000 đ", "stock": 5, "imagePath": "wine2.jpg"},
-                ]
-                self.products = [p for p in all_products if keyword.lower() in p['name'].lower()]
-
-        except Exception as e:
-            messagebox.showerror("Lỗi Tìm Kiếm", f"Không thể tìm sản phẩm: {e}")
-            self.products = []
-
-        # --- THAY ĐỔI: DỌN DẸP CODE ---
-        # Bỏ 4 dòng (for widget... self.canvas.yview_moveto(0))
-        # và thay bằng hàm trợ giúp của bạn:
-        self._display_product_list()
-
-    def _bind_children_mousewheel(self, widget):
-        """
-        Ràng buộc sự kiện cuộn cho widget và tất cả các widget con.
-        Mục đích: Khi chuột ở trên ProductCard (hoặc bất kỳ widget con nào), 
-        nó sẽ chuyển tiếp sự kiện cuộn lên hàm _on_canvas_mousewheel của Canvas.
-        """
-        widget.bind("<MouseWheel>", self._on_canvas_mousewheel)
-        widget.bind("<Button-4>", self._on_canvas_mousewheel)
-        widget.bind("<Button-5>", self._on_canvas_mousewheel)
-        
-        # Ràng buộc đệ quy cho tất cả widget con
-        for child in widget.winfo_children():
-            self._bind_children_mousewheel(child)
-        
-    # ------------------ CỬA SỔ CHI TIẾT SẢN PHẨM ------------------
-    def open_product_detail(self, product):
-        """Modal chi tiết: canvas scrollable ở trên + fixed bottom button bar.
-        Layout uses grid on `win` so bottom bar stays visible and content scrolls when needed.
-        """
-        win = tk.Toplevel(self)
-        win.title(product.get("name", "Chi tiết sản phẩm"))
-        win.geometry("700x480")
-        win.minsize(520, 360)
-        win.resizable(True, True)
-        win.grab_set()
-
-        # Lấy ảnh
-        image_path = self._get_absolute_image_path(product)
-        photo_modal_local = self._load_image_for_modal(image_path)
-
-        # --- Grid config on window: row0 = content (expandable), row1 = ctrl (fixed) ---
-        win.grid_rowconfigure(0, weight=1) # content expands
-        win.grid_rowconfigure(1, weight=0) # ctrl fixed
-        win.grid_columnconfigure(0, weight=1)
-
-        # --- CONTENT FRAME (holds canvas + scrollbar) ---
-        content_frame = tk.Frame(win, bg="#FFF8F0")
-        content_frame.grid(row=0, column=0, sticky="nsew", padx=12, pady=8)
-
-        # Canvas + vertical scrollbar (canvas will take the available space of content_frame)
-        canvas = tk.Canvas(content_frame, bg="#FFF8F0", highlightthickness=0)
-        v_scroll = ttk.Scrollbar(content_frame, orient="vertical", command=canvas.yview)
-        canvas.configure(yscrollcommand=v_scroll.set)
-
-        canvas.grid(row=0, column=0, sticky="nsew")
-        v_scroll.grid(row=0, column=1, sticky="ns")
-
-        content_frame.grid_rowconfigure(0, weight=1)
-        content_frame.grid_columnconfigure(0, weight=1)
-
-        # Frame inside canvas which will hold the actual two-column content
-        scrollable = tk.Frame(canvas, bg="#FFF8F0")
-        # create window inside canvas
-        canvas_window = canvas.create_window((0, 0), window=scrollable, anchor="nw")
-
-        # keep canvas scrollregion updated
-        def _on_frame_configure(event):
-            canvas.configure(scrollregion=canvas.bbox("all"))
-        scrollable.bind("<Configure>", _on_frame_configure)
-
-        # Also ensure canvas width follows content_frame width (responsive)
-        def _on_canvas_configure(event):
-            # set inner frame width to canvas width so columns wrap properly
-            canvas.itemconfigure(canvas_window, width=event.width)
-        canvas.bind("<Configure>", _on_canvas_configure)
-
-        # === 2 CỘT CHÍNH trong scrollable ===
-        scrollable.grid_columnconfigure(0, weight=1, uniform="col")
-        scrollable.grid_columnconfigure(1, weight=1, uniform="col")
-
-        # LEFT COLUMN (image + basic info)
-        left = tk.Frame(scrollable, bg="#FFF8F0")
-        left.grid(row=0, column=0, sticky="nsew", padx=(0, 8), pady=10)
-
-        if photo_modal_local:
-            img_lbl = tk.Label(left, image=photo_modal_local, bg="#FFF8F0")
-            img_lbl.image = photo_modal_local
-            img_lbl.pack(pady=8)
-        else:
-            tk.Label(left, text="(Không có ảnh)", bg="#F5F5F5", width=20, height=8).pack(pady=8)
-
-        tk.Label(left, text=product.get("name", "Tên sản phẩm"), font=("Times New Roman", 16, "bold"),
-                    fg="#8B0000", bg="#FFF8F0", wraplength=320, justify="left").pack(anchor="w", pady=(6, 4))
-        tk.Label(left, text=f"Giá: {product.get('price_str', '0 đ')}", font=("Times New Roman", 14, "bold"),
-                    fg="red", bg="#FFF8F0").pack(anchor="w", pady=(0, 6))
-
-        stock = product.get("stock", 0)
-        stock_color = "green" if stock > 0 else "red"
-        tk.Label(left, text=f"Tồn kho: {stock}", font=("Times New Roman", 12, "italic"),
-                    fg=stock_color, bg="#FFF8F0").pack(anchor="w", pady=(0, 8))
-
-        # RIGHT COLUMN (description area)
-        right = tk.Frame(scrollable, bg="#FFF8F0")
-        right.grid(row=0, column=1, sticky="nsew", padx=(8, 0), pady=10)
-
-        tk.Label(right, text="Mô tả sản phẩm", font=("Times New Roman", 12, "bold"), bg="#FFF8F0").pack(anchor="w", pady=(0, 6))
-
-        full_desc = product.get("description", "") or "Không có mô tả cho sản phẩm này."
-
-        desc_frame = tk.Frame(right, bg="#FFF8F0")
-        desc_frame.pack(fill="both", expand=True)
-
-        # Text read-only + scrollbar: give it a sensible min height, but it will scroll inside canvas if needed
-        txt = tk.Text(desc_frame, wrap="word", font=("Times New Roman", 11), bd=1, relief="solid", height=12)
-        txt.insert("1.0", full_desc)
-        txt.config(state="disabled")
-        txt.pack(side="left", fill="both", expand=True)
-
-        txt_scroll = ttk.Scrollbar(desc_frame, orient="vertical", command=txt.yview)
-        txt_scroll.pack(side="right", fill="y")
-        txt.config(yscrollcommand=txt_scroll.set)
-        
-        # ----------------------------------------------------
-        # --- CẬP NHẬT: CHỈ CUỘN TRONG KHU VỰC MÔ TẢ (txt) ---
-        # ----------------------------------------------------
-        
-        def _on_text_mousewheel(event):
-            """Xử lý cuộn chuột cho Text widget và ngăn chặn lan truyền."""
-            # Dùng yview_scroll để cuộn nội dung trong Text widget
-            if event.num == 5 or event.delta < 0:
-                txt.yview_scroll(1, "units")
-            elif event.num == 4 or event.delta > 0:
-                txt.yview_scroll(-1, "units")
-                
-            # Quan trọng: Trả về 'break' để ngăn sự kiện lan truyền lên các widget cha (Canvas)
-            return "break" 
-
-        # Ràng buộc cuộn chuột chỉ vào widget Text (txt)
-        txt.bind("<MouseWheel>", _on_text_mousewheel)    # Windows, Mac
-        txt.bind("<Button-4>", _on_text_mousewheel)      # Linux scroll up
-        txt.bind("<Button-5>", _on_text_mousewheel)      # Linux scroll down
-
-        # --- FIXED BOTTOM BUTTON BAR (always visible) ---
-        ctrl = tk.Frame(win, bg="#FFF8F0")
-        ctrl.grid(row=1, column=0, sticky="ew", padx=12, pady=(6, 12))
-        ctrl.grid_columnconfigure(0, weight=1)
-        ctrl.grid_columnconfigure(1, weight=1)
-
-        buy_now_btn = tk.Button(ctrl, text="💰 Mua ngay (Thanh toán)", bg="#4CAF50", fg="white",
-                                font=("Times New Roman", 12, "bold"),
-                                command=lambda: self.process_buy_now(product, win))
-        buy_now_btn.grid(row=0, column=0, padx=8, sticky="ew")
-
-        add_to_cart_btn = tk.Button(ctrl, text="🛒 Thêm vào giỏ hàng", bg="#A52A2A", fg="white",
-                                    font=("Times New Roman", 12, "bold"),
-                                    command=lambda: self._add_to_cart_from_detail(product, win))
-        add_to_cart_btn.grid(row=0, column=1, padx=8, sticky="ew")
-
-        if stock <= 0:
-            buy_now_btn.config(state=tk.DISABLED, text="Hết hàng")
-            add_to_cart_btn.config(state=tk.DISABLED)
-
-
-    def _get_absolute_image_path(self, product):
-        """Hàm hỗ trợ lấy đường dẫn ảnh cho modal."""
-        image_filename = product.get("imagePath", "") 
-        if image_filename:
-            base_filename = os.path.basename(image_filename)
-            abs_path = os.path.normpath(os.path.join(BASE_IMAGE_DIR, base_filename))
-            if os.path.exists(abs_path):
-                return abs_path
-
-        abs_default_path = os.path.join(BASE_IMAGE_DIR, "default.jpg")
-        if os.path.exists(abs_default_path):
-            return abs_default_path
-            
-        return None
-        
-    def _load_image_for_modal(self, abs_path):
-        """Tải và trả về ImageTk.PhotoImage cho modal."""
-        if abs_path is None:
-            return None
-        try:
-            img = Image.open(abs_path)
-            img.thumbnail(MODAL_IMAGE_SIZE) 
-            self.photo_modal = ImageTk.PhotoImage(img) 
-            return self.photo_modal
-        except Exception as e:
-            print(f"LỖI LOAD ẢNH cho modal: {e}") 
-            return None
-
-
-    def _add_to_cart_from_detail(self, product, win):
-        try:
-            self.add_to_cart(product)
-        except Exception as e:
-            print(f"Error in _add_to_cart_from_detail: {e}")
-        finally:
-            if win and win.winfo_exists():
-                win.destroy()
-
-
-    def process_buy_now(self, product, win):
-        """Thực hiện thanh toán ngay lập tức cho 1 sản phẩm."""
-        win.destroy() # Đóng modal
-        
-        # KIỂM TRA ĐĂNG NHẬP
-        if not self.is_logged_in: # Sử dụng property is_logged_in
-            self.show_error_toast("Bạn cần đăng nhập để thanh toán.")
-            # Loại bỏ self.show_login_dialog() theo yêu cầu người dùng
-            return
-            
-        # Kiểm tra tồn kho lần cuối
-        if product.get("stock", 0) <= 0:
-            messagebox.showerror("Lỗi", f"Sản phẩm '{product.get('name')}' đã hết hàng.")
-            self.load_products_list()
-            return
-            
-        # Chuẩn bị dữ liệu đơn hàng (chỉ 1 sản phẩm)
-        user_id = self.current_user['id']
-        name = product.get("name")
-        price = float(product.get("price", 0))
-        total = price
-        
-        items_to_checkout = [{
-            "sku": product.get("sku"), 
-            "name": name, 
-            "quantity": 1, 
-            "unitPrice": price
-        }]
-        
-        try:
-            # SỬ DỤNG MOCK FUNCTION NẾU KHÔNG CÓ DB
-            success, result = createOrder(user_id, items_to_checkout) 
-        except NameError:
-            success, result = True, "MOCK-12345" # Giả lập thành công
-            print("Warning: Using Mock createOrder function.")
-        
-        if success:
-            try:
-                formatted_total = format_currency(total)
-            except NameError:
-                formatted_total = f"{total:,}"
-            # Hiển thị toast thay vì messagebox
-            toast_msg = f"Thanh toán thành công!\nTổng: {formatted_total} VNĐ"
-            # Nếu muốn chỉ 1 dòng: toast_msg = f"Thanh toán thành công — Mã: {result} — {formatted_total} VNĐ"
-            self.show_toast(toast_msg)
-            # Cập nhật view / dữ liệu
-            self.load_products_list()
-        else:
-            messagebox.showerror("Lỗi", f"Thanh toán thất bại: {result}")
-            
-
-    # --- FIX 3: ĐỊNH NGHĨA HÀM DỌN DẸP TOAST ---
-    def _clear_current_toast(self):
-        """Hủy toast hiện tại: huỷ after và ẩn toast_win."""
-        # Cancel timer
-        if getattr(self, "toast_id", None):
-            try:
-                self.after_cancel(self.toast_id)
-            except Exception:
-                pass
-            self.toast_id = None
-
-        # Ẩn Toplevel nếu còn hiện
-        if getattr(self, "toast_win", None) and self.toast_win.winfo_exists():
-            try:
-                self.toast_win.withdraw()
-            except Exception:
-                pass
-
-        self.current_toast = None
-            
-    # ------------------ THÊM VÀO GIỎ + TOAST ------------------
-    def add_to_cart(self, product):
-        """Thêm sản phẩm vào giỏ hàng (Được gọi từ _add_to_cart_from_detail hoặc mua ngay)."""
-        
-        # KIỂM TRA ĐĂNG NHẬP (Sử dụng property is_logged_in)
-        if not self.is_logged_in: 
-            self.show_error_toast("Bạn cần đăng nhập để thêm sản phẩm vào giỏ.")
-            # Loại bỏ self.show_login_dialog() theo yêu cầu người dùng
-            return
-
-        # Hàm này nhận 'product' là dictionary từ ProductCard
-        sku = product.get("sku")
-        name = product.get("name")
-        price = float(product.get("price", 0))
-        stock = product.get("stock", 0)
-
-        # Kiểm tra tồn kho
-        if stock <= 0:
-            self.show_error_toast(f"Sản phẩm '{name}' đã hết hàng.")
-            return
-            
-        # Kiểm tra nếu thêm vượt quá tồn kho
-        current_qty = self.cart_items[sku]["quantity"] if sku in self.cart_items else 0
-        if current_qty + 1 > stock:
-            self.show_error_toast(f"Không thể thêm. Tồn kho chỉ còn {stock} sản phẩm.")
-            return
-
-        if sku in self.cart_items:
-            self.cart_items[sku]["quantity"] += 1
-        else:
-            self.cart_items[sku] = {
-                "sku": sku, "name": name, "quantity": 1, "unitPrice": price, "stock": stock
-            }
-
-        self.update_cart_badge()
-        self.show_toast(f"Đã thêm '{name}' vào giỏ hàng")
-
-
-    def run_toast_animation(self, message, is_error=False):
-        """Hiển thị toast in-place using self.toast_win and auto-hide after delay."""
-        if not getattr(self, "toast_win", None) or not self.toast_win.winfo_exists():
-            # đảm bảo đã tạo manager
-            self.create_toast_manager()
-
-        # Style tùy theo error hay success
-        bg = "#F44336" if is_error else "#4CAF50"
-        self.toast_label.config(text=message, bg=bg)
-
-        # Position toast_win near top center of the application window
-        # Calculate root window absolute position and width
-        try:
-            # self.winfo_toplevel() là cửa sổ chính
-            root = self.winfo_toplevel()
-            root.update_idletasks()
-            rx = root.winfo_rootx()
-            ry = root.winfo_rooty()
-            rwidth = root.winfo_width()
-            # width/height của toast (after packing)
-            self.toast_win.update_idletasks()
-            tw = self.toast_win.winfo_reqwidth()
-            th = self.toast_win.winfo_reqheight()
-            # đặt ở top center, cách top của root khoảng 10px (hoặc dưới header nếu bạn muốn)
-            x = rx + max(10, (rwidth - tw) // 2)
-            y = ry + 10  # 10 px từ cạnh trên cửa sổ chính
-            self.toast_win.geometry(f"{tw}x{th}+{x}+{y}")
-        except Exception:
-            # Fallback: center on screen
-            self.toast_win.geometry("+200+50")
-
-        # Show and cancel any previous timer
-        try:
-            self.toast_win.deiconify()
-            self.toast_win.lift()
-        except Exception:
-            pass
-
-        if self.toast_id:
-            try:
-                self.after_cancel(self.toast_id)
-            except Exception:
-                pass
-            self.toast_id = None
-
-        # Auto-hide sau 2000-3000ms
-        self.toast_id = self.after(2500, self._clear_current_toast)
-        self.current_toast = message
-
-
-    def show_error_toast(self, message):
-        """Hiện toast lỗi (màu đỏ). Nếu cùng message đang hiện thì reset thời gian."""
-        # Nếu cùng message đang hiện -> reset timer
-        if getattr(self, "current_toast", None) == message and getattr(self, "toast_win", None) and self.toast_win.winfo_ismapped():
-            if self.toast_id:
-                try:
-                    self.after_cancel(self.toast_id)
-                except Exception:
-                    pass
-            self.toast_id = self.after(2500, self._clear_current_toast)
-            return
-
-        self._clear_current_toast()
-        self.run_toast_animation(message, is_error=True)
-
-    def show_toast(self, message):
-        """Hiện toast thành công. Nếu cùng message đang hiện thì reset thời gian."""
-        # Nếu cùng message đang hiện -> reset timer
-        if getattr(self, "current_toast", None) == message and getattr(self, "toast_win", None) and self.toast_win.winfo_ismapped():
-            if self.toast_id:
-                try:
-                    self.after_cancel(self.toast_id)
-                except Exception:
-                    pass
-            self.toast_id = self.after(2500, self._clear_current_toast)
-            return
-
-        # Ngược lại: show mới
-        self._clear_current_toast()
-        self.run_toast_animation(message, is_error=False)
-
-    def update_cart_badge(self):
-        total_qty = sum(item["quantity"] for item in self.cart_items.values())
-        self.cart_btn.config(text=f"🛒 Giỏ hàng ({total_qty})")
-
-    # ------------------ GIỎ HÀNG (THÊM CHỨC NĂNG XÓA) ------------------
-    def show_cart_window(self):
-        if not self.cart_items:
-            messagebox.showinfo("Giỏ hàng", "Giỏ hàng trống.")
-            return
-
-        win = tk.Toplevel(self)
-        win.title("Giỏ hàng")
-        win.geometry("550x450") # Tăng chiều rộng để thêm cột Xóa
-        win.grab_set()
-        
-        # Frame chứa Treeview và Nút Xóa
-        tree_frame = tk.Frame(win, padx=10, pady=10)
-        tree_frame.pack(fill="both", expand=True)
-
-        # 1. Treeview
-        cart_tree = ttk.Treeview(
-            tree_frame, columns=("Tên", "SL", "Đơn giá", "Tổng", "Xóa"), show="headings"
-        )
-        for col in ("Tên", "SL", "Đơn giá", "Tổng", "Xóa"):
-            cart_tree.heading(col, text=col)
-        
-        cart_tree.column("Tên", width=180, anchor="w")
-        cart_tree.column("SL", width=40, anchor="center")
-        cart_tree.column("Đơn giá", width=90, anchor="e")
-        cart_tree.column("Tổng", width=90, anchor="e")
-        cart_tree.column("Xóa", width=40, anchor="center") # Cột cho nút xóa
-        
-        cart_tree.pack(side="left", fill="both", expand=True)
-        
-        # Thêm Scrollbar
-        vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=cart_tree.yview)
-        vsb.pack(side="right", fill="y")
-        cart_tree.configure(yscrollcommand=vsb.set)
-
-        total = self.populate_cart_tree(cart_tree)
-
-        # Binding sự kiện click cho nút xóa (trong Treeview)
-        cart_tree.bind('<ButtonRelease-1>', lambda e: self.handle_cart_click(e, cart_tree, win))
-
-
-        # Frame cho tổng tiền và nút Thanh toán
-        control_frame = tk.Frame(win, padx=10, pady=10)
-        control_frame.pack(fill="x", side="bottom")
-        
-        try:
-            # SỬ DỤNG MOCK FORMATTER NẾU KHÔNG CÓ DB
-            formatted_total = format_currency(total)
-        except NameError:
-            formatted_total = f"{total:,}"
-
-        self.total_label = tk.Label(
-            control_frame, text=f"Tổng cộng: {formatted_total} VNĐ",
-            fg="red", font=("Times New Roman", 14, "bold")
-        )
-        self.total_label.pack(side="left", padx=10)
-
-        tk.Button(
-            control_frame, text="Thanh toán", bg="#4CAF50", fg="white",
-            font=("Times New Roman", 12, "bold"),
-            command=lambda: self.process_checkout(win, total)
-        ).pack(side="right", padx=10)
-        
-        self.win = win # Lưu tham chiếu để có thể đóng từ hàm remove_from_cart
-        self.cart_tree = cart_tree # Lưu tham chiếu để có thể cập nhật
-
-    def populate_cart_tree(self, cart_tree):
-        """Đổ dữ liệu giỏ hàng vào Treeview và tính tổng cộng."""
-        total = 0
-        cart_tree.delete(*cart_tree.get_children()) # Xóa dữ liệu cũ
-        
-        for sku, item in self.cart_items.items():
-            subtotal = item["quantity"] * item["unitPrice"]
-            total += subtotal
-            
-            try:
-                # SỬ DỤNG MOCK FORMATTER NẾU KHÔNG CÓ DB
-                formatted_unit_price = format_currency(item["unitPrice"])
-                formatted_subtotal = format_currency(subtotal)
-            except NameError:
-                formatted_unit_price = f"{item['unitPrice']:,}"
-                formatted_subtotal = f"{subtotal:,}"
-                
-            cart_tree.insert(
-                "", tk.END,
-                iid=sku, # Dùng SKU làm ID của item trong Treeview
-                values=(item["name"], item["quantity"],
-                        formatted_unit_price,
-                        formatted_subtotal,
-                        '🗑️ Xóa') # Nút xóa
-            )
-        return total
-
-    def handle_cart_click(self, event, cart_tree, win):
-        """Xử lý sự kiện click trong Treeview, đặc biệt cho cột 'Xóa'."""
-        item = cart_tree.identify_row(event.y)
-        column = cart_tree.identify_column(event.x)
-        
-        # Kiểm tra xem có phải click vào cột 'Xóa' không (cột #5)
-        if column == '#5' and item:
-            sku = item # item id chính là SKU
-            self.remove_from_cart(sku, win)
-            
-    def remove_from_cart(self, sku, win):
-        """Xóa sản phẩm khỏi giỏ hàng, cập nhật Treeview và tổng tiền."""
-        if sku in self.cart_items:
-            product_name = self.cart_items[sku]["name"]
-            del self.cart_items[sku]
-            self.update_cart_badge()
-            self.show_toast(f"Đã xóa '{product_name}' khỏi giỏ hàng.")
-
-            # Cập nhật Treeview và Tổng tiền
-            total = self.populate_cart_tree(self.cart_tree)
-            try:
-                formatted_total = format_currency(total)
-            except NameError:
-                formatted_total = f"{total:,}"
-                
-            self.total_label.config(text=f"Tổng cộng: {formatted_total} VNĐ")
-
-            # Nếu giỏ hàng trống, đóng cửa sổ
-            if not self.cart_items:
-                win.destroy()
-                self.show_toast("Giỏ hàng trống.")
-                
-            self.load_products_list() # Tải lại sản phẩm để cập nhật tồn kho (nếu có)
-
-
-    def process_checkout(self, win, total):
-        win.destroy()
-        if not self.is_logged_in:
-            messagebox.showerror("Lỗi", "Bạn phải đăng nhập để thanh toán.")
-            # Loại bỏ self.show_login_dialog() theo yêu cầu người dùng
-            return
-            
-        user_id = self.current_user['id']
-        
-        # Chuẩn bị danh sách items cho CSDL (bỏ "stock")
-        items_to_checkout = [{k: v for k, v in item.items() if k != 'stock'} 
-                             for item in self.cart_items.values()]
-                             
-        try:
-            # SỬ DỤNG MOCK FUNCTION NẾU KHÔNG CÓ DB
-            success, result = createOrder(user_id, items_to_checkout) 
-        except NameError:
-            success, result = True, "MOCK-12345" # Giả lập thành công
-            print("Warning: Using Mock createOrder function.")
-        
-        if success:
-            try:
-                formatted_total = format_currency(total)
-            except NameError:
-                formatted_total = f"{total:,}"
-            # Hiển thị toast thay vì messagebox
-            toast_msg = f"Thanh toán thành công!\nTổng: {formatted_total} VNĐ"
-            self.show_toast(toast_msg)
-            # Reset giỏ hàng và cập nhật giao diện
-            self.cart_items.clear()
-            self.update_cart_badge()
-            self.load_products_list()  # Tải lại sản phẩm để cập nhật tồn kho
-        else:
-            messagebox.showerror("Lỗi", f"Thanh toán thất bại: {result}")
-
-    # ------------------ FOOTER ------------------
-    def create_footer(self):
-        footer = tk.Frame(self, bg="#FFF0E6", height=60)
-        footer.pack(fill="x", side="bottom")
-        tk.Label(
-            footer,
-            text="🍷 RubyOak — Hương vị rượu vang hảo hạng từ thiên nhiên.\nTrải nghiệm đẳng cấp trong từng giọt rượu.",
-            bg="#FFF0E6", fg="#5C2E0C", font=("Times New Roman", 11, "italic")
-        ).pack(pady=10)
-
-    # ------------------ XỬ LÝ TÀI KHOẢN & ĐĂNG NHẬP ------------------
-    def show_login_dialog(self):
-        """Chuyển đến trang Đăng nhập hoặc Đăng xuất."""
-        if self.current_user:
-            self.logout()
-            return
-        # Giả định controller có phương thức show_frame
-        try:
-            self.controller.show_frame("LoginPage")
-        except AttributeError:
-            messagebox.showinfo("Thông báo", "Chức năng đăng nhập/đăng xuất chưa được liên kết.")
-
-    def show_user_info_dialog(self):
-        """Hiển thị thông tin người dùng hiện tại (khi click vào nhãn username)."""
-        if not self.current_user:
-            self.show_error_toast("Bạn chưa đăng nhập.")
-            return
-
-        win = tk.Toplevel(self)
-        win.title("Thông tin tài khoản")
-        win.geometry("300x150")
-        win.resizable(False, False)
-        win.grab_set()
-
-        tk.Label(win, text="👤 THÔNG TIN TÀI KHOẢN", font=("Times New Roman", 14, "bold"), fg="#8B0000").pack(pady=10)
-        tk.Label(win, text=f"Tên đăng nhập: {self.current_user.get('username', 'N/A')}", font=("Times New Roman", 12)).pack(anchor='w', padx=20)
-        tk.Label(win, text=f"ID người dùng: {self.current_user.get('id', 'N/A')}", font=("Times New Roman", 12)).pack(anchor='w', padx=20)
-        tk.Label(win, text=f"Vai trò: {self.current_user.get('role', 'N/A')}", font=("Times New Roman", 12)).pack(anchor='w', padx=20)
-
-    def logout(self):
-        """Xóa user, reset giỏ hàng, và cập nhật giao diện."""
-        self.current_user = None
-        self.user_label.config(text="Chưa đăng nhập", fg="#FFCDD2", cursor="") 
-        self.login_button.config(text="Đăng nhập")
-        self.cart_items = {}
-        self.update_cart_badge()
-        self.show_toast("Đã đăng xuất thành công.")
-    
-    def update_user_status(self, user_id, username, role):
-        """Cập nhật trạng thái user sau khi đăng nhập."""
-        self.current_user = {'id': user_id, 'username': username, 'role': role}
-
-        self.user_label.config(text=f"Xin chào: {username}", fg="white", cursor="hand2")
-        self.login_button.config(text="Đăng xuất")
-        
-        # Phân quyền & Điều hướng
-        if role == 'Admin':
-            # Giả định controller có phương thức show_frame
-            try:
-                self.controller.show_frame("AdminPage")
-            except AttributeError:
-                print("Lỗi: Không tìm thấy AdminPage.")
-            
-    # ------------------ XỬ LÝ DỮ LIỆU & VIEW ------------------
-    def on_show(self):
-        """Phương thức được Controller gọi khi Frame này được hiển thị (tkraise)."""
-        self.load_products_list()
-
-    def _on_canvas_mousewheel(self, event):
-        """
-        Xử lý cuộn chuột cho Canvas.
-        Thực hiện cuộn và trả về "break" để ngăn sự kiện lan truyền.
-        """
-        # Không cần kiểm tra scrollregion/content_height ở đây. 
-        # Tkinter sẽ tự giới hạn khi cuộn.
-        
-        if event.delta: # Windows/Linux
-            # Scroll 1 unit (hoặc 1/120 delta)
-            self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        else: # MacOS/Linux (Button-4, Button-5)
-            if event.num == 4:
-                self.canvas.yview_scroll(-1, "units")
-            elif event.num == 5:
-                self.canvas.yview_scroll(1, "units")
-        
-        # TRẢ VỀ "break" ĐỂ NGĂN CHẶN SỰ KIỆN CUỘN LÊN WIDGET CHA
-        return "break"
-        
-    def _update_scroll_region(self, event=None):
-        """
-        Cập nhật scrollregion của Canvas dựa trên kích thước của grid_frame.
-        Điều chỉnh logic ẩn/hiện Scrollbar.
-        """
-        self.canvas.update_idletasks() # Đảm bảo grid_frame đã được tính toán kích thước
-        bbox = self.canvas.bbox("all")
-        
-        if bbox is None:
-            self.canvas.config(scrollregion=(0, 0, 0, 0))
-            self.v_scroll.pack_forget() # Ẩn nếu không có nội dung
-            return
-            
-        self.canvas.config(scrollregion=bbox)
-        
-        # Tính toán chiều cao:
-        # content_height: Chiều cao thực của nội dung (grid_frame)
-        # canvas_height: Chiều cao hiện tại của Canvas
-        
-        canvas_height = self.canvas.winfo_height()
-        # bbox[3] là y max, bbox[1] là y min (tính từ 0,0 của canvas). content_height = bbox[3] - bbox[1]
-        content_height = bbox[3] 
-        
-        # Thêm một ngưỡng nhỏ (ví dụ: 1 pixel) để tránh lỗi làm tròn
-        SCROLL_THRESHOLD = 1
-        
-        if content_height <= canvas_height + SCROLL_THRESHOLD:
-            # Nếu nội dung nhỏ hơn hoặc bằng chiều cao canvas, ẩn Scrollbar
-            self.v_scroll.pack_forget()
-            
-            # Đảm bảo cuộn về đầu khi Scrollbar bị ẩn
-            self.canvas.yview_moveto(0) 
-            
-        else:
-            # Nếu nội dung lớn hơn chiều cao canvas, hiển thị Scrollbar
-            self.v_scroll.pack(side="right", fill="y")
-
+        self.category_buttons = []
+
+        # Gọi UI đã tách
+        create_header_ui(self)
+        create_toast_manager_ui(self)
+        create_product_grid_ui(self)
+
+        # Tải sản phẩm ban đầu
+        load_products_list_ui(self)
+
+    # ===========================================================
+    # PROPERTY GIỮ NGUYÊN
+    @property
+    def is_logged_in(self):
+        return self.current_user and 'id' in self.current_user
+
+    # ===========================================================
+    # RÀNG BUỘC HÀM UI
+
+    def on_canvas_resize(self, event): on_canvas_resize_ui(self, event)
+    def load_products_list(self): load_products_list_ui(self)
+    def show_next_products(self): show_next_products_ui(self)
+
+    def load_more_products(self): load_more_products_ui(self)
+    def perform_search(self, event=None): perform_search_ui(self, event)
+    def _bind_children_mousewheel(self, widget): bind_children_mousewheel_ui(self, widget)
+
+    def open_product_detail(self, product): open_product_detail_ui(self, product)
+
+    def _add_to_cart_from_detail(self, product, win): add_to_cart_from_detail_ui(self, product, win)
+    def process_buy_now(self, product, win): process_buy_now_ui(self, product, win)
+    def _clear_current_toast(self): clear_current_toast_ui(self)
+
+    def add_to_cart(self, product): return add_to_cart_ui(self, product)
+
+    def run_toast_animation(self, m, e=False): return run_toast_animation_ui(self, m, e)
+    def show_error_toast(self, m): return show_error_toast_ui(self, m)
+    def show_toast(self, m): return show_toast_ui(self, m)
+    def update_cart_badge(self): return update_cart_badge_ui(self)
+
+    def show_cart_window(self): return show_cart_window_ui(self)
+    def populate_cart_tree(self, t): return populate_cart_tree_ui(self, t)
+    def handle_cart_click(self, e, t, w): return handle_cart_click_ui(self, e, t, w)
+    def remove_from_cart(self, sku, w): return remove_from_cart_ui(self, sku, w)
+    def process_checkout(self, win, total): return process_checkout_ui(self, win, total)
+
+    def create_footer(self): return create_footer_ui(self)
+    def show_login_dialog(self): return show_login_dialog_ui(self)
+    def show_user_info_dialog(self): return show_user_info_dialog_ui(self)
+    def logout(self): return logout_ui(self)
+    def update_user_status(self, *args): return update_user_status_ui(self, *args)
+
+    def create_category_sidebar(self, parent): return create_category_sidebar_ui(self, parent)
+    def load_products_by_category(self, c): return load_products_by_category_ui(self, c)
+    def _set_active_category_button(self, b=None): return set_active_category_button_ui(self, b)
+
+    def _display_product_list(self): return display_product_list_ui(self)
+    def create_search_bar(self, parent): return create_search_bar_ui(self, parent)
+    def _update_scroll_region(self, event=None): return update_scroll_region_ui(self, event)
+    def _on_canvas_mousewheel(self, event): return on_canvas_mousewheel_ui(self, event)
+
+    def _get_absolute_image_path(self, product): return get_absolute_image_path_ui(self, product, BASE_IMAGE_DIR)
+    def _load_image_for_modal(self, abs_path): return load_image_for_modal_ui(self, abs_path, MODAL_IMAGE_SIZE)
 
     def on_show_frame(self):
-        """Hàm này sẽ được controller gọi khi trang này được hiển thị."""
-        # Đặt kích thước cửa sổ mong muốn (Rộng x Cao)
-        # Bạn có thể thử nghiệm các giá trị này, ví dụ: 450x550 hoặc 400x500
-        self.controller.state('zoomed')  # Mở rộng cửa sổ tối đa
-       
-    def create_category_sidebar(self, parent_frame):
-        """Tạo sidebar danh mục bên trong parent_frame."""
-        
-        self.sidebar_frame = tk.Frame(parent_frame, bg="#FFF0E6", width=160, bd=1, relief="solid")
-        self.sidebar_frame.pack(side="left", fill="y", padx=(20, 10)) 
-        self.sidebar_frame.pack_propagate(False) 
-
-        tk.Label(
-            self.sidebar_frame, text="🍷 Danh Mục", 
-            font=("Times New Roman", 14, "bold"), 
-            bg="#8B0000", fg="white"
-        ).pack(fill="x", pady=(0, 5), ipady=5)
-
-        self.category_buttons.clear()
-
-        # Nút "Tất cả"
-        btn_all = tk.Button(
-            self.sidebar_frame, text="Tất cả sản phẩm", 
-            font=("Times New Roman", 11, "bold"), 
-            relief="flat", 
-            bg="#FFF0E6", fg="black"
-            # --- XÓA anchor="w" và padx=10 ---
-        )
-        btn_all.config(
-            command=lambda b=btn_all: (self._set_active_category_button(b), self.load_products_list())
-        )
-        btn_all.pack(fill="x", padx=5, pady=(5, 2))
-        self.category_buttons.append(btn_all)
-
-        # Tải và hiển thị các danh mục từ DB
         try:
-            categories = getAllCategories()
-            for cat_name in categories:
-                btn_cat = tk.Button(
-                    self.sidebar_frame, text=cat_name, 
-                    font=("Times New Roman", 11),
-                    relief="flat", 
-                    bg="#FFF0E6", 
-                    fg="black"
-                    # --- XÓA anchor="w" và padx=10 ---
-                )
-                btn_cat.config(
-                    command=lambda b=btn_cat, c=cat_name: (self._set_active_category_button(b), self.load_products_by_category(c))
-                )
-                btn_cat.pack(fill="x", padx=5, pady=1)
-                self.category_buttons.append(btn_cat)
-                
-                # Thêm hiệu ứng hover (giữ nguyên)
-                btn_cat.bind("<Enter>", lambda e: e.widget.config(bg="#E0D4CC"))
-                btn_cat.bind("<Leave>", lambda e: self._set_active_category_button())
-                
-        except Exception as e:
-            print(f"Không thể tải danh mục: {e}")
-            tk.Label(self.sidebar_frame, text="(Lỗi tải danh mục)", bg="#FFF0E6").pack()
-            
-        # Thêm hiệu ứng hover cho nút "Tất cả" (giữ nguyên)
-        btn_all.bind("<Enter>", lambda e: e.widget.config(bg="#E0D4CC"))
-        btn_all.bind("<Leave>", lambda e: self._set_active_category_button())
-            
-        # Đặt nút "Tất cả" làm nút active mặc định
-        self._set_active_category_button(btn_all)
+            self.controller.state("zoomed")
+        except:
+            pass
 
-    def load_products_by_category(self, category_name):
-        """Tải và hiển thị sản phẩm theo danh mục."""
-        self.search_entry.delete(0, tk.END) # Xóa thanh tìm kiếm
         try:
-            # SỬ DỤNG MOCK DATA NẾU KHÔNG CÓ DB
-            try:
-                self.products = getProductsByCategoryForPOS(category_name) or []
-            except NameError:
-                print("Warning: Using Mock Data for Category.")
-                self.products = [
-                    {"sku": "SKU001", "name": "Vang Đỏ (Mock)", "price": 500000.0, "price_str": "500.000 đ", "stock": 10},
-                ]
-        except Exception as e:
-            messagebox.showerror("Lỗi Tải Sản Phẩm", f"Không thể tải sản phẩm cho danh mục '{category_name}': {e}")
-            self.products = []
-
-        # Gọi hàm hiển thị
-        self._display_product_list()
-
-    def _display_product_list(self):
-        """
-        (Hàm trợ giúp) Xóa grid cũ và hiển thị danh sách self.products hiện tại.
-        Hàm này được gọi bởi load_products_list, perform_search, và load_products_by_category.
-        """
-        self.display_index = 0
-
-        # 1. Xóa tất cả các card cũ
-        for widget in self.grid_frame.winfo_children():
-            widget.destroy()
-
-        # 2. Ẩn nút "Xem thêm"
-        self.more_btn.pack_forget() 
-
-        # 3. Hiển thị sản phẩm (hàm này sẽ tự xử lý nếu self.products rỗng)
-        self.show_next_products() 
-
-        # 4. Đặt lại vị trí Scrollbar về đầu
-        if hasattr(self, 'canvas'):
-            self.canvas.yview_moveto(0)
-
-    # (Thêm hàm mới này vào bất cứ đâu bên trong Class POSPage)
-
-    # (TRONG POSPage.py)
-# THAY THẾ HÀM NÀY
-
-    def _set_active_category_button(self, active_button=None):
-        """
-        (Hàm trợ giúp mới) Đặt lại màu tất cả các nút danh mục 
-        và chỉ highlight nút đang hoạt động.
-        """
-        # --- THÊM MỚI: Lưu nút active ---
-        if active_button:
-            self.active_category_button = active_button
-        # --------------------------------
-        
-        ACTIVE_BG = "#A52A2A"
-        ACTIVE_FG = "white"
-        NORMAL_BG = "#FFF0E6"
-        NORMAL_FG = "black"
-        
-        for button in self.category_buttons:
-            try:
-                # --- THAY ĐỔI LOGIC: ---
-                # Đặt TẤT CẢ về bình thường
-                button.config(bg=NORMAL_BG, fg=NORMAL_FG)
-            except tk.TclError:
-                pass
-        
-        # Chỉ highlight nút đang active
-        if hasattr(self, 'active_category_button') and self.active_category_button in self.category_buttons:
-            try:
-                self.active_category_button.config(bg=ACTIVE_BG, fg=ACTIVE_FG)
-            except tk.TclError:
-                pass
+            self.load_products()
+            self.load_orders_admin()
+        except:
+            pass
