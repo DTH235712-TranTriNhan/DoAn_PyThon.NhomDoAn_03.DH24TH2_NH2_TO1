@@ -109,7 +109,7 @@ INSERT INTO Users (userID, userName, password, fullName, userRole) VALUES
 
 ## 3. CẤU HÌNH KẾT NỐI PYTHON
 
-Trong file `dbConnector.py` hoặc `databaseManager.py`, sửa:
+Trong file `dbConnector.py` sửa:
 ```python
 # Lưu ý: Thêm chữ r'' để tránh lỗi escape ký tự \
 SERVER_NAME = r'TEN_SERVER_CUA_BAN\SQLEXPRESS'
