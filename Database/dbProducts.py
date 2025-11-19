@@ -192,7 +192,7 @@ def addProduct(sku, name, category, price, stock, imagePath=None, description=No
     imagePath = imagePath.strip() if imagePath and isinstance(imagePath, str) else None
     description = description.strip() if description and isinstance(description, str) else None
     
-    if not sku: return False, "Mã SP (SKU) không được để trống."
+    if not sku: return False, "Mã sản phẩm không được để trống."
     
     try:
         # 1. Kiểm tra TÊN SẢN PHẨM đã tồn tại
@@ -217,7 +217,7 @@ def addProduct(sku, name, category, price, stock, imagePath=None, description=No
             # Tên mới: PHẢI kiểm tra SKU đã tồn tại chưa
             cursor.execute("SELECT SKU FROM Products WHERE SKU = ?", (sku,))
             if cursor.fetchone():
-                return False, f"Lỗi: Mã sản phẩm (SKU) '{sku}' đã được sử dụng. Vui lòng chọn Mã khác."
+                return False, f"Lỗi: Mã sản phẩm '{sku}' đã được sử dụng. Vui lòng chọn Mã khác."
 
             # Tên mới VÀ SKU mới: CHÈN SẢN PHẨM MỚI
             sql_insert = """

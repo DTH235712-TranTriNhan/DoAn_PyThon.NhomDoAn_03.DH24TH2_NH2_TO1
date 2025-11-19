@@ -116,7 +116,7 @@ class ImageUtilsMixin:
         self.photo_admin = None
         
         if not imagePath:
-            # SỬA LỖI: Khi không có đường dẫn (initial load/placeholder), tạo placeholder image
+            # Khi không có đường dẫn (initial load/placeholder), tạo placeholder image
             self.photo_admin = self._create_error_canvas("Ảnh Xem trước")
             self.image_preview_label.config(
                 image=self.photo_admin, # Luôn hiển thị ảnh
@@ -128,7 +128,6 @@ class ImageUtilsMixin:
         absolute_path = os.path.normpath(os.path.join(os.getcwd(), imagePath))
 
         if not os.path.exists(absolute_path):
-            # KHẮC PHỤC LỖI: Dùng canvas lỗi 
             self.photo_admin = self._create_error_canvas("Không tìm thấy file")
             self.image_preview_label.config(
                 image=self.photo_admin, # Luôn hiển thị ảnh
